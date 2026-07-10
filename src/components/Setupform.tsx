@@ -24,6 +24,7 @@ import {
 } from "../lib/meshAPI";
 import { useInterviewAPI } from "../hook/useInterviewAPi";
 import SearchableCombobox from "../components/SearchableCombobox";
+import { useElevenLabs } from "../hook/useElevanLabs";
 
 const EXPERIENCE_LEVELS = [
   "Entry Level",
@@ -59,20 +60,6 @@ const initialState: InterviewSetup = {
 
 type FormErrors = Partial<Record<keyof InterviewSetup, string>>;
 
-function playVoicePreview(voiceId: VoiceOption, languageId: LanguageOption) {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  const voice = VOICE_TABS.find((v) => v.id === voiceId) ?? VOICE_TABS[2];
-  const lang =
-    LANGUAGE_TABS.find((l) => l.id === languageId) ?? LANGUAGE_TABS[0];
-
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(lang.sample);
-  utterance.pitch = voice.pitch;
-  utterance.rate = voice.rate;
-  utterance.lang = lang.ttsLang;
-  window.speechSynthesis.speak(utterance);
-}
-
 function SetupForm() {
   const router = useRouter();
   const {
@@ -86,6 +73,7 @@ function SetupForm() {
   const [isStarting, setIsStarting] = useState(false);
   const [hoveredVoice, setHoveredVoice] = useState<VoiceOption | null>(null);
 
+  const { speak, isSpeaking } = useElevenLabs();
   const handleChange = (field: keyof InterviewSetup, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -309,12 +297,31 @@ function SetupForm() {
                     <Icon size={17} strokeWidth={active ? 2.2 : 1.8} />
                     {voice.label}
 
-                    <span
-                      role="button"
+                    <button
+                      type="button"
+                      disabled={isSpeaking}
                       aria-label={`Preview ${voice.label} voice`}
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        playVoicePreview(voice.id, formData.language);
+
+                        const previewText = {
+                          english:
+                            "Hello. I'm your MockMate AI interviewer. This is how I will sound during your interview. Best of luck.",
+
+                          hindi:
+                            "नमस्ते। मैं आपका MockMate AI इंटरव्यूअर हूँ। इंटरव्यू के दौरान मेरी आवाज़ कुछ ऐसी सुनाई देगी। आपको शुभकामनाएँ।",
+
+                          hinglish:
+                            "Hello! Main aapka MockMate AI interviewer hoon. Interview ke dauran meri voice kuch aisi hogi. All the best!",
+                        };
+
+                        await speak(
+                          previewText[formData.language],
+                          formData.language,
+                          formData.voiceGender === "neutral"
+                            ? "female"
+                            : formData.voiceGender,
+                        );
                       }}
                       className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-150"
                       style={{
@@ -325,8 +332,12 @@ function SetupForm() {
                         boxShadow: "0 2px 6px rgba(11,11,11,0.18)",
                       }}
                     >
-                      {hovered ? <Volume2 size={11} /> : <Play size={11} />}
-                    </span>
+                      {isSpeaking ? (
+                        <Volume2 size={11} className="animate-pulse" />
+                      ) : (
+                        <Play size={11} />
+                      )}{" "}
+                    </button>
                   </button>
                 );
               })}
