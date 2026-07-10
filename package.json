@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@google/genai": "^2.11.0",
     "@tabler/icons-react": "^3.44.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.24.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.50.0",
     "motion": "^12.42.2",
     "next": "16.2.10",
     "react": "19.2.4",

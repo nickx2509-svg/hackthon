@@ -24,7 +24,7 @@ import {
 } from "../lib/meshAPI";
 import { useInterviewAPI } from "../hook/useInterviewAPi";
 import SearchableCombobox from "../components/SearchableCombobox";
-import { useElevenLabs } from "../hook/useElevanLabs";
+import { useGeminiTTS } from "../hook/useGemeniTTS";
 
 const EXPERIENCE_LEVELS = [
   "Entry Level",
@@ -55,7 +55,7 @@ const initialState: InterviewSetup = {
   experienceLevel: "",
   jobDescription: "",
   language: "english",
-  voiceGender: "neutral",
+  voiceGender: "female",
 };
 
 type FormErrors = Partial<Record<keyof InterviewSetup, string>>;
@@ -67,13 +67,13 @@ function SetupForm() {
     loading: isGeneratingDesc,
     error: apiError,
   } = useInterviewAPI();
+  const { speak, stop, isSpeaking } = useGeminiTTS();
 
   const [formData, setFormData] = useState<InterviewSetup>(initialState);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isStarting, setIsStarting] = useState(false);
   const [hoveredVoice, setHoveredVoice] = useState<VoiceOption | null>(null);
 
-  const { speak, isSpeaking } = useElevenLabs();
   const handleChange = (field: keyof InterviewSetup, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -297,47 +297,54 @@ function SetupForm() {
                     <Icon size={17} strokeWidth={active ? 2.2 : 1.8} />
                     {voice.label}
 
-                    <button
-                      type="button"
-                      disabled={isSpeaking}
+                    <div
+                      role="button"
+                      tabIndex={0}
                       aria-label={`Preview ${voice.label} voice`}
                       onClick={async (e) => {
                         e.stopPropagation();
 
+                        if (isSpeaking) return;
+
                         const previewText = {
                           english:
-                            "Hello. I'm your MockMate AI interviewer. This is how I will sound during your interview. Best of luck.",
+                            "Hello! I'm your MockMate AI interviewer. This is how I'll sound during your interview. Let's begin.",
 
                           hindi:
-                            "नमस्ते। मैं आपका MockMate AI इंटरव्यूअर हूँ। इंटरव्यू के दौरान मेरी आवाज़ कुछ ऐसी सुनाई देगी। आपको शुभकामनाएँ।",
+                            "नमस्ते! मैं आपका MockMate AI इंटरव्यूअर हूँ। इंटरव्यू के दौरान मेरी आवाज़ कुछ ऐसी होगी। चलिए शुरू करते हैं।",
 
                           hinglish:
-                            "Hello! Main aapka MockMate AI interviewer hoon. Interview ke dauran meri voice kuch aisi hogi. All the best!",
+                            "Hello! Main aapka MockMate AI interviewer hoon. Interview ke dauran meri voice kuch aisi hogi. Chaliye shuru karte hain.",
                         };
 
                         await speak(
                           previewText[formData.language],
                           formData.language,
-                          formData.voiceGender === "neutral"
-                            ? "female"
-                            : formData.voiceGender,
+                          formData.voiceGender,
                         );
                       }}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-150"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          (e.currentTarget as HTMLDivElement).click();
+                        }
+                      }}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-150 cursor-pointer"
                       style={{
                         backgroundColor: active ? ACCENT_BLUE : "#2F5D5A",
                         color: "#FFFFFF",
                         opacity: hovered ? 1 : 0,
                         transform: hovered ? "scale(1)" : "scale(0.7)",
                         boxShadow: "0 2px 6px rgba(11,11,11,0.18)",
+                        pointerEvents: isSpeaking ? "none" : "auto",
                       }}
                     >
                       {isSpeaking ? (
-                        <Volume2 size={11} className="animate-pulse" />
+                        <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
                       ) : (
                         <Play size={11} />
-                      )}{" "}
-                    </button>
+                      )}
+                    </div>
                   </button>
                 );
               })}

@@ -1,93 +1,190 @@
-// app/api/voice/route.ts
+import { NextResponse } from "next/server";
+import { GoogleGenAI } from "@google/genai";
 
-import { NextRequest, NextResponse } from "next/server";
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY!,
+});
+const VALID_LANGUAGES = ["english", "hindi", "hinglish"] as const;
+const VALID_GENDERS = ["male", "female"] as const;
 
-function getVoiceId(language: string, gender: string) {
-  if (language === "hindi") {
-    return gender === "female"
-      ? process.env.ELEVENLABS_HINDI_FEMALE_VOICE_ID!
-      : process.env.ELEVENLABS_HINDI_MALE_VOICE_ID!;
+function getVoiceName(language: string, gender: string): string {
+  switch (language) {
+    case "english":
+      return gender === "male" ? "Puck" : "Aoede";
+
+    case "hindi":
+      return gender === "male" ? "Kore" : "Leda";
+
+    case "hinglish":
+      return gender === "male" ? "Puck" : "Aoede";
+
+    default:
+      return "Aoede";
   }
+}
+function pcmToWav(
+  pcmBuffer: Buffer,
+  sampleRate = 24000,
+  channels = 1,
+  bitsPerSample = 16,
+) {
+  const headerSize = 44;
+  const dataSize = pcmBuffer.length;
 
-  if (language === "hinglish") {
-    return gender === "female"
-      ? process.env.ELEVENLABS_HINGLISH_FEMALE_VOICE_ID!
-      : process.env.ELEVENLABS_HINGLISH_MALE_VOICE_ID!;
-  }
+  const wavBuffer = Buffer.alloc(headerSize + dataSize);
 
-  return gender === "female"
-    ? process.env.ELEVENLABS_ENGLISH_FEMALE_VOICE_ID!
-    : process.env.ELEVENLABS_ENGLISH_MALE_VOICE_ID!;
+  // RIFF
+  wavBuffer.write("RIFF", 0);
+  wavBuffer.writeUInt32LE(36 + dataSize, 4);
+  wavBuffer.write("WAVE", 8);
+
+  // fmt
+  wavBuffer.write("fmt ", 12);
+  wavBuffer.writeUInt32LE(16, 16);
+  wavBuffer.writeUInt16LE(1, 20); // PCM
+  wavBuffer.writeUInt16LE(channels, 22);
+  wavBuffer.writeUInt32LE(sampleRate, 24);
+
+  const byteRate = (sampleRate * channels * bitsPerSample) / 8;
+
+  wavBuffer.writeUInt32LE(byteRate, 28);
+
+  const blockAlign = (channels * bitsPerSample) / 8;
+
+  wavBuffer.writeUInt16LE(blockAlign, 32);
+
+  wavBuffer.writeUInt16LE(bitsPerSample, 34);
+
+  // data
+  wavBuffer.write("data", 36);
+
+  wavBuffer.writeUInt32LE(dataSize, 40);
+
+  pcmBuffer.copy(wavBuffer, 44);
+
+  return wavBuffer;
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const { text, language, gender } = await req.json();
 
-    if (!text) {
-      return NextResponse.json({ error: "Text is required." }, { status: 400 });
-    }
-
-    const apiKey = process.env.ELEVENLABS_API_KEY;
-
-    if (!apiKey) {
+    if (!text || typeof text !== "string") {
       return NextResponse.json(
-        { error: "Missing ELEVENLABS_API_KEY" },
-        { status: 500 },
+        {
+          error: "Text is required.",
+        },
+        {
+          status: 400,
+        },
       );
     }
 
-    const voiceId = getVoiceId(language, gender);
-
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-      {
-        method: "POST",
-        headers: {
-          "xi-api-key": apiKey,
-          "Content-Type": "application/json",
-          Accept: "audio/mpeg",
+    if (!VALID_LANGUAGES.includes(language)) {
+      return NextResponse.json(
+        {
+          error: "Invalid language.",
         },
-        body: JSON.stringify({
-          text,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: {
-            stability: 0.45,
-            similarity_boost: 0.8,
-            style: 0.35,
-            use_speaker_boost: true,
+        {
+          status: 400,
+        },
+      );
+    }
+
+    if (!VALID_GENDERS.includes(gender)) {
+      return NextResponse.json(
+        {
+          error: "Invalid gender.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    const voiceName = getVoiceName(language, gender);
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `You are MockMate AI.
+
+You are conducting a professional mock interview.
+
+Speak exactly like a friendly senior interviewer at Google, Microsoft or Amazon.
+
+Your voice should feel:
+- Warm
+- Confident
+- Calm
+- Conversational
+- Human
+
+Never sound robotic.
+
+Pause naturally.
+
+Emphasize important words naturally.
+
+Do not explain anything.
+
+Do not answer the transcript.
+
+Do not add extra words.
+
+Read ONLY the transcript exactly as written.
+
+Transcript:
+
+${text}`,
+            },
+          ],
+        },
+      ],
+      config: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName,
+            },
           },
-        }),
+        },
       },
+    });
+
+    const base64Audio = response.candidates?.[0]?.content?.parts?.find(
+      (part) => part.inlineData?.data,
+    )?.inlineData?.data;
+
+    if (!base64Audio) {
+      throw new Error("Gemini did not return any audio.");
+    }
+    console.log(response.candidates?.[0]?.content?.parts);
+    console.log(
+      response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType,
     );
 
-    if (!response.ok) {
-      const error = await response.text();
+    const pcmBuffer = Buffer.from(base64Audio, "base64");
 
-      return NextResponse.json(
-        {
-          error,
-        },
-        {
-          status: response.status,
-        },
-      );
-    }
-
-    const audioBuffer = await response.arrayBuffer();
-
-    return new NextResponse(audioBuffer, {
+    const wavBuffer = pcmToWav(pcmBuffer);
+    return new NextResponse(wavBuffer, {
+      status: 200,
       headers: {
-        "Content-Type": "audio/mpeg",
+        "Content-Type": "audio/wav",
         "Cache-Control": "no-store",
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
 
     return NextResponse.json(
       {
-        error: "Failed to generate voice.",
+        error: error?.message ?? "Failed to generate speech.",
       },
       {
         status: 500,
