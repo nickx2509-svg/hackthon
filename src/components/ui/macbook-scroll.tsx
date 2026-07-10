@@ -1,6 +1,6 @@
 "use client";
-import React from "react";
-import { motion } from "motion/react";
+import React, { useEffect, useRef, useState } from "react";
+import { MotionValue, motion, useScroll, useTransform } from "motion/react";
 import { cn } from "@/lib/utils";
 import {
   IconBrightnessDown,
@@ -24,81 +24,145 @@ import { IconCommand } from "@tabler/icons-react";
 import { IconCaretLeftFilled } from "@tabler/icons-react";
 import { IconCaretDownFilled } from "@tabler/icons-react";
 
-/**
- * Rebuilt from scratch to fix the recurring scroll bugs. The old version
- * scroll-linked scale/rotate/translate continuously — that's what made it
- * feel like it moved at a different "speed" than your scroll, and let it
- * drift into the hero text or leave a huge gap before the form.
- *
- * This version has exactly ONE animation: a single one-time fade + slide-up
- * that plays once when the laptop scrolls into view (`whileInView`), then
- * stops completely. The laptop itself is always shown open — no scroll-tied
- * lid animation — so there is nothing left that can desync from your scroll
- * position. Sizing is pure responsive Tailwind (bigger on every breakpoint,
- * including mobile), not JS-computed scale.
- */
 export const MacbookScroll = ({
   src,
-  showGradient = true,
+  showGradient,
+  title,
   badge,
 }: {
   src?: string;
   showGradient?: boolean;
+  title?: string | React.ReactNode;
   badge?: React.ReactNode;
 }) => {
-  return (
-    <div className="flex w-full justify-center px-4 py-6 md:py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.25 }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-        className="origin-top scale-[0.68] sm:scale-[0.88] md:scale-100 lg:scale-[1.15] xl:scale-[1.28]"
-      >
-        <div className="flex flex-col items-center [perspective:900px]">
-          {/* Open lid with screen */}
-          <div
-            style={{
-              transform: "perspective(900px) rotateX(-13deg) translateZ(0px)",
-              transformOrigin: "bottom",
-              transformStyle: "preserve-3d",
-            }}
-            className="relative h-[19rem] w-[36rem] rounded-2xl bg-[#F5F5F2] p-2"
-          >
-            <div className="absolute inset-0 rounded-lg bg-[#EDEDE9] m-2" />
-            <img
-              src={src}
-              alt="MockMate AI interview screen"
-              className="absolute inset-0 h-[calc(100%-16px)] w-[calc(100%-16px)] m-2 rounded-lg object-cover object-left-top"
-            />
-            {showGradient && (
-              <div className="absolute inset-x-2 bottom-2 z-50 h-16 rounded-b-lg bg-gradient-to-t from-white/70 via-white/10 to-transparent" />
-            )}
-            {badge && (
-              <div className="absolute bottom-4 left-4 z-50">{badge}</div>
-            )}
-          </div>
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  });
 
-          {/* Base area */}
-          <div className="relative -mt-1 h-[24rem] w-[36rem] overflow-hidden rounded-2xl bg-[#F3F3F0]">
-            <div className="relative h-10 w-full">
-              <div className="absolute inset-x-0 mx-auto h-4 w-[80%] bg-[#DCDCD7]" />
-            </div>
-            <div className="relative flex">
-              <div className="mx-auto h-full w-[10%] overflow-hidden">
-                <SpeakerGrid />
-              </div>
-              <div className="mx-auto h-full w-[80%]">
-                <Keypad />
-              </div>
-              <div className="mx-auto h-full w-[10%] overflow-hidden">
-                <SpeakerGrid />
-              </div>
-            </div>
-            <Trackpad />
-            <div className="absolute inset-x-0 bottom-0 mx-auto h-2 w-20 rounded-tl-3xl rounded-tr-3xl bg-gradient-to-t from-[#EDEDE9] to-[#D9D9D4]" />
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (window && window.innerWidth < 768) {
+      setIsMobile(true);
+    }
+  }, []);
+
+  const scaleX = useTransform(
+    scrollYProgress,
+    [0, 0.3],
+    [1.2, isMobile ? 1 : 1.5],
+  );
+  const scaleY = useTransform(
+    scrollYProgress,
+    [0, 0.3],
+    [0.6, isMobile ? 1 : 1.5],
+  );
+  const translate = useTransform(scrollYProgress, [0, 1], [0, 1500]);
+  const rotate = useTransform(scrollYProgress, [0.1, 0.12, 0.3], [-28, -28, 0]);
+
+  return (
+    // Base scale bumped way up on every breakpoint (was 0.35 → 0.5 → 1) so the
+    // laptop reads as a hero-sized centerpiece on phone too, not a thumbnail.
+    // min-h and py trimmed down so it doesn't leave a huge empty scroll gap
+    // above/below the section.
+    <div
+      ref={ref}
+      className="flex min-h-[130vh] shrink-0 scale-[0.6] transform flex-col items-center justify-start py-6 [perspective:800px] sm:scale-90 sm:py-8 md:min-h-[150vh] md:scale-110 md:py-16 lg:scale-125"
+    >
+      {/* Lid */}
+      <Lid
+        src={src}
+        scaleX={scaleX}
+        scaleY={scaleY}
+        rotate={rotate}
+        translate={translate}
+      />
+
+      {/* Base area — light mode */}
+      <div className="relative -z-10 h-[22rem] w-[32rem] overflow-hidden rounded-2xl border border-[#E9E8E6] bg-[#F1EFEA]">
+        {/* above keyboard bar */}
+        <div className="relative h-10 w-full">
+          <div className="absolute inset-x-0 mx-auto h-4 w-[80%] bg-[#DEDCD5]" />
+        </div>
+        <div className="relative flex">
+          <div className="mx-auto h-full w-[10%] overflow-hidden">
+            <SpeakerGrid />
+          </div>
+          <div className="mx-auto h-full w-[80%]">
+            <Keypad />
+          </div>
+          <div className="mx-auto h-full w-[10%] overflow-hidden">
+            <SpeakerGrid />
           </div>
         </div>
+        <Trackpad />
+        <div className="absolute inset-x-0 bottom-0 mx-auto h-2 w-20 rounded-tl-3xl rounded-tr-3xl bg-gradient-to-t from-[#E4E2DC] to-[#F1EFEA]" />
+        {showGradient && (
+          <div className="absolute inset-x-0 bottom-0 z-50 h-40 w-full bg-gradient-to-t from-white via-white to-transparent" />
+        )}
+        {badge && <div className="absolute bottom-4 left-4">{badge}</div>}
+      </div>
+    </div>
+  );
+};
+
+export const Lid = ({
+  scaleX,
+  scaleY,
+  rotate,
+  translate,
+  src,
+}: {
+  scaleX: MotionValue<number>;
+  scaleY: MotionValue<number>;
+  rotate: MotionValue<number>;
+  translate: MotionValue<number>;
+  src?: string;
+}) => {
+  return (
+    <div className="relative [perspective:800px]">
+      <div
+        style={{
+          transform: "perspective(800px) rotateX(-25deg) translateZ(0px)",
+          transformOrigin: "bottom",
+          transformStyle: "preserve-3d",
+        }}
+        className="relative h-[12rem] w-[32rem] rounded-2xl border border-[#E9E8E6] bg-white p-2"
+      >
+        <div
+          style={{
+            boxShadow: "0px 2px 0px 2px #E9E8E6 inset",
+          }}
+          className="absolute inset-0 flex items-center justify-center rounded-lg bg-white"
+        >
+          {/* Logo replaced with the MockMate AI wordmark */}
+          <span
+            className="text-base font-bold tracking-tight sm:text-lg"
+            style={{ color: "#0B0B0B" }}
+          >
+            MockMate<span style={{ color: "#2F5D5A" }}>AI</span>
+          </span>
+        </div>
+      </div>
+      <motion.div
+        style={{
+          scaleX: scaleX,
+          scaleY: scaleY,
+          rotateX: rotate,
+          translateY: translate,
+          transformStyle: "preserve-3d",
+          transformOrigin: "top",
+        }}
+        className="absolute inset-0 h-96 w-[32rem] rounded-2xl border border-[#E9E8E6] bg-white p-2"
+      >
+        <div className="absolute inset-0 rounded-lg bg-[#F9F9F6]" />
+        <img
+          src={src as string}
+          alt="MockMate AI interview screen"
+          className="absolute inset-0 h-full w-full rounded-lg object-cover object-left-top"
+        />
       </motion.div>
     </div>
   );
@@ -108,14 +172,16 @@ export const Trackpad = () => {
   return (
     <div
       className="mx-auto my-1 h-32 w-[40%] rounded-xl"
-      style={{ boxShadow: "0px 0px 1px 1px #00000015 inset" }}
+      style={{
+        boxShadow: "0px 0px 1px 1px #00000020 inset",
+      }}
     ></div>
   );
 };
 
 export const Keypad = () => {
   return (
-    <div className="mx-1 h-full [transform:translateZ(0)] rounded-md bg-[#ECECE8] p-1 [will-change:transform]">
+    <div className="mx-1 h-full [transform:translateZ(0)] rounded-md bg-[#EDEBE5] p-1 [will-change:transform]">
       {/* First Row */}
       <div className="mb-[2px] flex w-full shrink-0 gap-[2px]">
         <KBtn
@@ -173,8 +239,8 @@ export const Keypad = () => {
           <span className="mt-1 inline-block">F12</span>
         </KBtn>
         <KBtn>
-          <div className="h-4 w-4 rounded-full bg-gradient-to-b from-neutral-300 from-20% via-neutral-100 via-50% to-neutral-300 to-95% p-px">
-            <div className="h-full w-full rounded-full bg-white" />
+          <div className="h-4 w-4 rounded-full bg-gradient-to-b from-[#F1EFEA] from-20% via-[#E4E2DC] via-50% to-[#F1EFEA] to-95% p-px">
+            <div className="h-full w-full rounded-full bg-[#EDEBE5]" />
           </div>
         </KBtn>
       </div>
@@ -210,7 +276,7 @@ export const Keypad = () => {
           <span className="block">6</span>
         </KBtn>
         <KBtn>
-          <span className="block">&amp;</span>
+          <span className="block">&</span>
           <span className="block">7</span>
         </KBtn>
         <KBtn>
@@ -395,7 +461,7 @@ export const Keypad = () => {
 
       {/* sixth Row */}
       <div className="mb-[2px] flex w-full shrink-0 gap-[2px]">
-        <KBtn childrenClassName="h-full justify-between py-[4px]">
+        <KBtn className="" childrenClassName="h-full justify-between py-[4px]">
           <div className="flex w-full justify-end pr-1">
             <span className="block">fn</span>
           </div>
@@ -403,7 +469,7 @@ export const Keypad = () => {
             <IconWorld className="h-[6px] w-[6px]" />
           </div>
         </KBtn>
-        <KBtn childrenClassName="h-full justify-between py-[4px]">
+        <KBtn className="" childrenClassName="h-full justify-between py-[4px]">
           <div className="flex w-full justify-end pr-1">
             <IconChevronUp className="h-[6px] w-[6px]" />
           </div>
@@ -411,7 +477,7 @@ export const Keypad = () => {
             <span className="block">control</span>
           </div>
         </KBtn>
-        <KBtn childrenClassName="h-full justify-between py-[4px]">
+        <KBtn className="" childrenClassName="h-full justify-between py-[4px]">
           <div className="flex w-full justify-end pr-1">
             <OptionKey className="h-[6px] w-[6px]" />
           </div>
@@ -442,7 +508,7 @@ export const Keypad = () => {
             <span className="block">command</span>
           </div>
         </KBtn>
-        <KBtn childrenClassName="h-full justify-between py-[4px]">
+        <KBtn className="" childrenClassName="h-full justify-between py-[4px]">
           <div className="flex w-full justify-start pl-1">
             <OptionKey className="h-[6px] w-[6px]" />
           </div>
@@ -475,6 +541,7 @@ export const KBtn = ({
   className,
   children,
   childrenClassName,
+  backlit = true,
 }: {
   className?: string;
   children?: React.ReactNode;
@@ -484,23 +551,25 @@ export const KBtn = ({
   return (
     <div
       className={cn(
-        "[transform:translateZ(0)] rounded-[4px] p-[0.5px] [will-change:transform] bg-[#00000012]",
+        "[transform:translateZ(0)] rounded-[4px] p-[0.5px] [will-change:transform]",
+        backlit && "bg-black/[0.04] shadow-sm",
       )}
     >
       <div
         className={cn(
-          "flex h-6 w-6 items-center justify-center rounded-[3.5px] bg-white",
+          "flex h-6 w-6 items-center justify-center rounded-[3.5px] bg-white border border-[#E9E8E6]",
           className,
         )}
         style={{
           boxShadow:
-            "0px -0.5px 2px 0 #DADAD6 inset, -0.5px 0px 2px 0 #DADAD6 inset",
+            "0px -0.5px 2px 0 #00000012 inset, -0.5px 0px 2px 0 #00000012 inset",
         }}
       >
         <div
           className={cn(
-            "flex w-full flex-col items-center justify-center text-[5px] text-[#4A4640]",
+            "flex w-full flex-col items-center justify-center text-[5px] text-neutral-500",
             childrenClassName,
+            backlit && "text-neutral-700",
           )}
         >
           {children}
@@ -516,7 +585,7 @@ export const SpeakerGrid = () => {
       className="mt-2 flex h-40 gap-[2px] px-[0.5px]"
       style={{
         backgroundImage:
-          "radial-gradient(circle, #CFCFC9 0.5px, transparent 0.5px)",
+          "radial-gradient(circle, #C9C6BF 0.5px, transparent 0.5px)",
         backgroundSize: "3px 3px",
       }}
     ></div>

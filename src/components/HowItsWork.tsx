@@ -151,7 +151,7 @@ export function HowItWork() {
             <strong>Disclaimer:</strong> MockMate AI was built purely for the{" "}
             <strong>MeshAPI Hackathon</strong>, hosted by{" "}
             <strong>Dhruv Rathee</strong>. It's a demo MVP built to showcase
-            what MeshAPI can power in an interactive interview flow — not a
+            what MeshAPI can power in an interactive interview flow - not a
             production product, and no data is stored beyond your current
             browser tab.
           </p>

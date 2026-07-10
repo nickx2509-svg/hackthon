@@ -26,103 +26,126 @@ export function Navbar() {
   }
 
   return (
-    <header
-      className="sticky top-0 z-50 w-full backdrop-blur-md"
-      style={{
-        backgroundColor: "rgba(255,255,255,0.85)",
-        borderBottom: "1px solid #E9E8E6",
-      }}
-    >
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-8">
-        {/* Wordmark */}
-        <button
-          onClick={() => scrollToSection("home")}
-          className="flex items-center gap-2"
-        >
-          <span
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold"
-            style={{ backgroundColor: "#2F5D5A", color: "#FFFFFF" }}
+    <header className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4">
+      <div
+        className="w-full max-w-6xl rounded-full backdrop-blur-xl shadow-lg"
+        style={{
+          background: "rgba(255,255,255,0.88)",
+          border: "1px solid #E7E6E3",
+        }}
+      >
+        <div className="flex items-center justify-between px-6 py-3">
+          {/* Wordmark */}
+          <button
+            onClick={() => scrollToSection("home")}
+            className="flex items-center gap-2"
           >
-            M
-          </span>
-          <span
-            className="text-base font-semibold tracking-tight"
-            style={{ color: "#0B0B0B" }}
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold"
+              style={{
+                backgroundColor: "#2F5D5A",
+                color: "#FFFFFF",
+              }}
+            >
+              M
+            </span>
+
+            <span
+              className="text-base font-semibold tracking-tight"
+              style={{ color: "#0B0B0B" }}
+            >
+              MockMate <span style={{ color: "#2F5D5A" }}>AI</span>
+            </span>
+          </button>
+
+          {/* Desktop Nav */}
+          <nav className="hidden items-center gap-1 sm:flex">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  className="flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-all duration-200"
+                  style={{
+                    color: "#4A4640",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#EEF3F2";
+                    e.currentTarget.style.color = "#2F5D5A";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = "#4A4640";
+                  }}
+                >
+                  <Icon size={15} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* CTA */}
+          <button
+            onClick={() => scrollToSection("setup-form")}
+            className="hidden rounded-full px-5 py-2 text-sm font-medium transition hover:opacity-90 sm:block"
+            style={{
+              background: "#2F5D5A",
+              color: "#fff",
+            }}
           >
-            MockMate <span style={{ color: "#2F5D5A" }}>AI</span>
-          </span>
-        </button>
+            Get Started
+          </button>
 
-        {/* Desktop nav — the 3 buttons */}
-        <nav className="hidden items-center gap-1 sm:flex">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => scrollToSection(item.id)}
-                className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all duration-150 hover:opacity-80"
-                style={{
-                  color: "#4A4640",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#EEF3F2";
-                  e.currentTarget.style.color = "#2F5D5A";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color = "#4A4640";
-                }}
-              >
-                <Icon size={15} />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
+          {/* Mobile */}
+          <button
+            onClick={() => setMobileOpen((v) => !v)}
+            className="flex h-10 w-10 items-center justify-center rounded-full sm:hidden"
+            style={{
+              border: "1px solid #E7E6E3",
+              color: "#4A4640",
+            }}
+          >
+            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
 
-        {/* CTA on desktop */}
-        <button
-          onClick={() => scrollToSection("setup-form")}
-          className="hidden rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90 sm:block"
-          style={{ backgroundColor: "#2F5D5A", color: "#FFFFFF" }}
-        >
-          Get Started
-        </button>
+        {mobileOpen && (
+          <nav
+            className="border-t px-4 pb-4 pt-3 sm:hidden"
+            style={{
+              borderColor: "#E7E6E3",
+            }}
+          >
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
 
-        {/* Mobile toggle */}
-        <button
-          onClick={() => setMobileOpen((v) => !v)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg sm:hidden"
-          style={{ border: "1px solid #E9E8E6", color: "#4A4640" }}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-        </button>
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  className="mt-2 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium"
+                  style={{
+                    background: "#F8F8F6",
+                    color: "#4A4640",
+                  }}
+                >
+                  <Icon
+                    size={16}
+                    style={{
+                      color: "#2F5D5A",
+                    }}
+                  />
+
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+        )}
       </div>
-
-      {/* Mobile dropdown */}
-      {mobileOpen && (
-        <nav
-          className="flex flex-col gap-1 px-4 pb-4 sm:hidden"
-          style={{ borderTop: "1px solid #E9E8E6" }}
-        >
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => scrollToSection(item.id)}
-                className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium mt-1"
-                style={{ backgroundColor: "#F9F9F6", color: "#4A4640" }}
-              >
-                <Icon size={16} style={{ color: "#2F5D5A" }} />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-      )}
     </header>
   );
 }
