@@ -137,7 +137,8 @@ function SetupForm() {
 
   return (
     <div
-      className="w-full flex items-center justify-center px-4 py-16"
+      id="setup-form"
+      className="scroll-mt-24 w-full flex items-center justify-center px-4 py-20 md:py-28"
       style={{ backgroundColor: "#F9F9F6" }}
     >
       <div className="w-full max-w-xl">
@@ -308,7 +309,6 @@ function SetupForm() {
                     <Icon size={17} strokeWidth={active ? 2.2 : 1.8} />
                     {voice.label}
 
-                    {/* Preview play button — appears on hover */}
                     <span
                       role="button"
                       aria-label={`Preview ${voice.label} voice`}

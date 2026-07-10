@@ -7,6 +7,8 @@ import SetupForm from "./Setupform";
 import { CursorGlow } from "./CursorGlow";
 import { ScrollStripes } from "./ScrollStripes";
 import { LiveActivityStrip } from "./LiveActivityStrip";
+import { Navbar } from "./Navbar";
+import { HowItWork } from "./HowItWork";
 
 const SCREEN_PLACEHOLDER = `data:image/svg+xml;utf8,${encodeURIComponent(`
 <svg width="800" height="500" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
@@ -37,9 +39,13 @@ export function MainPage() {
     <div className="relative w-full overflow-hidden bg-white">
       <CursorGlow />
       <ScrollStripes />
+      <Navbar />
 
-      {/* Hero */}
-      <section className="relative z-[2] w-full px-4 pt-24 sm:pt-28 pb-10 flex flex-col items-center text-center">
+      {/* Hero — equal top/bottom padding, matches every other section below */}
+      <section
+        id="home"
+        className="scroll-mt-24 relative z-[2] w-full px-4 py-20 md:py-28 flex flex-col items-center text-center"
+      >
         <div
           className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium mb-6 mm-fade-in"
           style={{
@@ -70,10 +76,8 @@ export function MainPage() {
         <div className="mm-divider mt-8" />
       </section>
 
-      {/* Laptop showcase — now a self-contained pinned section. It can never
-          overlap the hero above it because it's normal document flow until
-          you actually scroll into its own 220vh runway, at which point it
-          pins in place and animates smoothly, then releases. */}
+      {/* Laptop showcase — now a single self-contained fade-in, no scroll
+          runway, so spacing above/below is just normal section padding */}
       <div className="relative z-[2]">
         <MacbookScroll src={SCREEN_PLACEHOLDER} showGradient />
       </div>
@@ -81,6 +85,11 @@ export function MainPage() {
       {/* Setup form */}
       <div className="relative z-[2]">
         <SetupForm />
+      </div>
+
+      {/* How it works */}
+      <div className="relative z-[2]">
+        <HowItWork />
       </div>
 
       {/* Unique closer strip */}

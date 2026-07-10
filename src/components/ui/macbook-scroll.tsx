@@ -1,6 +1,6 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
-import { MotionValue, motion, useScroll, useTransform } from "motion/react";
+import React from "react";
+import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import {
   IconBrightnessDown,
@@ -24,6 +24,19 @@ import { IconCommand } from "@tabler/icons-react";
 import { IconCaretLeftFilled } from "@tabler/icons-react";
 import { IconCaretDownFilled } from "@tabler/icons-react";
 
+/**
+ * Rebuilt from scratch to fix the recurring scroll bugs. The old version
+ * scroll-linked scale/rotate/translate continuously — that's what made it
+ * feel like it moved at a different "speed" than your scroll, and let it
+ * drift into the hero text or leave a huge gap before the form.
+ *
+ * This version has exactly ONE animation: a single one-time fade + slide-up
+ * that plays once when the laptop scrolls into view (`whileInView`), then
+ * stops completely. The laptop itself is always shown open — no scroll-tied
+ * lid animation — so there is nothing left that can desync from your scroll
+ * position. Sizing is pure responsive Tailwind (bigger on every breakpoint,
+ * including mobile), not JS-computed scale.
+ */
 export const MacbookScroll = ({
   src,
   showGradient = true,
@@ -33,146 +46,59 @@ export const MacbookScroll = ({
   showGradient?: boolean;
   badge?: React.ReactNode;
 }) => {
-  // This outer container is what defines the scroll "runway" — its height
-  // (220vh) is how much scrolling the whole animation takes. The laptop
-  // itself lives in a `sticky` child below, so it stays pinned to the
-  // viewport for that entire runway instead of scrolling away with the
-  // page. That's the fix: previously the laptop scrolled with the page
-  // AND animated at the same time, which is what made it feel like two
-  // different speeds fighting each other and let it drift up into the
-  // hero text. Now there's exactly one motion source.
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"],
-  });
-
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    if (window && window.innerWidth < 768) {
-      setIsMobile(true);
-    }
-  }, []);
-
-  const scaleX = useTransform(
-    scrollYProgress,
-    [0, 0.4],
-    [0.9, isMobile ? 1 : 1.5],
-  );
-  const scaleY = useTransform(
-    scrollYProgress,
-    [0, 0.4],
-    [0.6, isMobile ? 1 : 1.5],
-  );
-  const rotate = useTransform(scrollYProgress, [0.05, 0.1, 0.4], [-24, -24, 0]);
-  const translate = useTransform(scrollYProgress, [0, 0.4], [0, 1400]);
-
-  // Screen fades out once fully opened, so it never just sits there frozen
-  const screenOpacity = useTransform(scrollYProgress, [0.42, 0.62], [1, 0]);
-
-  // Whole laptop fades IN as you first reach it, and fades OUT before the
-  // runway ends — so by the time the sticky pin releases and the page
-  // resumes normal scroll into the form, the laptop is already gone.
-  const sectionOpacity = useTransform(
-    scrollYProgress,
-    [0, 0.06, 0.82, 1],
-    [0, 1, 1, 0],
-  );
-
   return (
-    <div ref={containerRef} className="relative h-[220vh] w-full">
+    <div className="flex w-full justify-center px-4 py-6 md:py-8">
       <motion.div
-        style={{ opacity: sectionOpacity }}
-        className="sticky top-0 flex h-screen w-full shrink-0 scale-[0.42] transform flex-col items-center justify-center overflow-hidden [perspective:800px] sm:scale-[0.62] md:scale-[0.88] lg:scale-105 xl:scale-[1.15]"
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.25 }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="origin-top scale-[0.68] sm:scale-[0.88] md:scale-100 lg:scale-[1.15] xl:scale-[1.28]"
       >
-        {/* Lid */}
-        <Lid
-          src={src}
-          scaleX={scaleX}
-          scaleY={scaleY}
-          rotate={rotate}
-          translate={translate}
-          screenOpacity={screenOpacity}
-        />
-        {/* Base area */}
-        <div className="relative -z-10 h-[24rem] w-[36rem] overflow-hidden rounded-2xl bg-[#F3F3F0]">
-          <div className="relative h-10 w-full">
-            <div className="absolute inset-x-0 mx-auto h-4 w-[80%] bg-[#DCDCD7]" />
+        <div className="flex flex-col items-center [perspective:900px]">
+          {/* Open lid with screen */}
+          <div
+            style={{
+              transform: "perspective(900px) rotateX(-13deg) translateZ(0px)",
+              transformOrigin: "bottom",
+              transformStyle: "preserve-3d",
+            }}
+            className="relative h-[19rem] w-[36rem] rounded-2xl bg-[#F5F5F2] p-2"
+          >
+            <div className="absolute inset-0 rounded-lg bg-[#EDEDE9] m-2" />
+            <img
+              src={src}
+              alt="MockMate AI interview screen"
+              className="absolute inset-0 h-[calc(100%-16px)] w-[calc(100%-16px)] m-2 rounded-lg object-cover object-left-top"
+            />
+            {showGradient && (
+              <div className="absolute inset-x-2 bottom-2 z-50 h-16 rounded-b-lg bg-gradient-to-t from-white/70 via-white/10 to-transparent" />
+            )}
+            {badge && (
+              <div className="absolute bottom-4 left-4 z-50">{badge}</div>
+            )}
           </div>
-          <div className="relative flex">
-            <div className="mx-auto h-full w-[10%] overflow-hidden">
-              <SpeakerGrid />
-            </div>
-            <div className="mx-auto h-full w-[80%]">
-              <Keypad />
-            </div>
-            <div className="mx-auto h-full w-[10%] overflow-hidden">
-              <SpeakerGrid />
-            </div>
-          </div>
-          <Trackpad />
-          <div className="absolute inset-x-0 bottom-0 mx-auto h-2 w-20 rounded-tl-3xl rounded-tr-3xl bg-gradient-to-t from-[#EDEDE9] to-[#D9D9D4]" />
-          {showGradient && (
-            <div className="absolute inset-x-0 bottom-0 z-50 h-40 w-full bg-gradient-to-t from-white via-white to-transparent"></div>
-          )}
-          {badge && <div className="absolute bottom-4 left-4">{badge}</div>}
-        </div>
-      </motion.div>
-    </div>
-  );
-};
 
-export const Lid = ({
-  scaleX,
-  scaleY,
-  rotate,
-  translate,
-  screenOpacity,
-  src,
-}: {
-  scaleX: MotionValue<number>;
-  scaleY: MotionValue<number>;
-  rotate: MotionValue<number>;
-  translate: MotionValue<number>;
-  screenOpacity: MotionValue<number>;
-  src?: string;
-}) => {
-  return (
-    <div className="relative [perspective:800px]">
-      <div
-        style={{
-          transform: "perspective(800px) rotateX(-25deg) translateZ(0px)",
-          transformOrigin: "bottom",
-          transformStyle: "preserve-3d",
-        }}
-        className="relative h-[13rem] w-[36rem] rounded-2xl bg-[#F5F5F2] p-2"
-      >
-        <div
-          style={{ boxShadow: "0px 2px 0px 2px #E5E5E2 inset" }}
-          className="absolute inset-0 flex items-center justify-center rounded-lg bg-[#FAFAF8] border border-[#E9E8E6]"
-        >
-          <MockMateWordmark />
+          {/* Base area */}
+          <div className="relative -mt-1 h-[24rem] w-[36rem] overflow-hidden rounded-2xl bg-[#F3F3F0]">
+            <div className="relative h-10 w-full">
+              <div className="absolute inset-x-0 mx-auto h-4 w-[80%] bg-[#DCDCD7]" />
+            </div>
+            <div className="relative flex">
+              <div className="mx-auto h-full w-[10%] overflow-hidden">
+                <SpeakerGrid />
+              </div>
+              <div className="mx-auto h-full w-[80%]">
+                <Keypad />
+              </div>
+              <div className="mx-auto h-full w-[10%] overflow-hidden">
+                <SpeakerGrid />
+              </div>
+            </div>
+            <Trackpad />
+            <div className="absolute inset-x-0 bottom-0 mx-auto h-2 w-20 rounded-tl-3xl rounded-tr-3xl bg-gradient-to-t from-[#EDEDE9] to-[#D9D9D4]" />
+          </div>
         </div>
-      </div>
-      <motion.div
-        style={{
-          scaleX,
-          scaleY,
-          rotateX: rotate,
-          translateY: translate,
-          opacity: screenOpacity,
-          transformStyle: "preserve-3d",
-          transformOrigin: "top",
-        }}
-        className="absolute inset-0 h-[27rem] w-[36rem] rounded-2xl bg-[#F5F5F2] p-2"
-      >
-        <div className="absolute inset-0 rounded-lg bg-[#EDEDE9]" />
-        <img
-          src={src as string}
-          alt="MockMate AI interview screen"
-          className="absolute inset-0 h-full w-full rounded-lg object-cover object-left-top"
-        />
       </motion.div>
     </div>
   );
@@ -469,7 +395,7 @@ export const Keypad = () => {
 
       {/* sixth Row */}
       <div className="mb-[2px] flex w-full shrink-0 gap-[2px]">
-        <KBtn className="" childrenClassName="h-full justify-between py-[4px]">
+        <KBtn childrenClassName="h-full justify-between py-[4px]">
           <div className="flex w-full justify-end pr-1">
             <span className="block">fn</span>
           </div>
@@ -477,7 +403,7 @@ export const Keypad = () => {
             <IconWorld className="h-[6px] w-[6px]" />
           </div>
         </KBtn>
-        <KBtn className="" childrenClassName="h-full justify-between py-[4px]">
+        <KBtn childrenClassName="h-full justify-between py-[4px]">
           <div className="flex w-full justify-end pr-1">
             <IconChevronUp className="h-[6px] w-[6px]" />
           </div>
@@ -485,7 +411,7 @@ export const Keypad = () => {
             <span className="block">control</span>
           </div>
         </KBtn>
-        <KBtn className="" childrenClassName="h-full justify-between py-[4px]">
+        <KBtn childrenClassName="h-full justify-between py-[4px]">
           <div className="flex w-full justify-end pr-1">
             <OptionKey className="h-[6px] w-[6px]" />
           </div>
@@ -516,7 +442,7 @@ export const Keypad = () => {
             <span className="block">command</span>
           </div>
         </KBtn>
-        <KBtn className="" childrenClassName="h-full justify-between py-[4px]">
+        <KBtn childrenClassName="h-full justify-between py-[4px]">
           <div className="flex w-full justify-start pl-1">
             <OptionKey className="h-[6px] w-[6px]" />
           </div>
@@ -628,24 +554,5 @@ export const OptionKey = ({ className }: { className: string }) => {
         stroke="none"
       />
     </svg>
-  );
-};
-
-const MockMateWordmark = () => {
-  return (
-    <div className="flex flex-col items-center justify-center gap-1">
-      <span
-        className="text-2xl font-semibold tracking-tight"
-        style={{ color: "#2F5D5A" }}
-      >
-        MockMate <span style={{ color: "#0B0B0B" }}>AI</span>
-      </span>
-      <span
-        className="text-[9px] font-medium tracking-[0.35em] uppercase"
-        style={{ color: "#9A9A94" }}
-      >
-        AI Interviewer
-      </span>
-    </div>
   );
 };
