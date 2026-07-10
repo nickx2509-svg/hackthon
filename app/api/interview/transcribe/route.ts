@@ -4,7 +4,7 @@
 // speech-to-text (ElevenLabs Scribe v2 under the hood).
 
 import { NextResponse } from "next/server";
-import { SARVAM_LANGUAGE_CODE, type LanguageOption } from "@/src/lib/meshAPI";
+import { SCRIBE_LANGUAGE_CODE, type LanguageOption } from "@/src/lib/meshAPI";
 import { meshTranscribe } from "@/src/lib/mesh-server";
 
 export async function POST(req: Request) {
@@ -20,8 +20,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const languageCode =
-      SARVAM_LANGUAGE_CODE[language] || SARVAM_LANGUAGE_CODE.english;
+    // Undefined for "hinglish" is intentional — that tells Scribe to
+    // auto-detect rather than forcing a single-language code onto
+    // code-mixed speech.
+    const languageCode = SCRIBE_LANGUAGE_CODE[language];
 
     const text = await meshTranscribe(audio, {
       languageCode,

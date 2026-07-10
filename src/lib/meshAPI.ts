@@ -102,3 +102,22 @@ export const SARVAM_SPEAKER: Record<VoiceOption, string> = {
   male: "shubh",
   female: "priya",
 };
+
+/**
+ * Language codes for the TRANSCRIPTION endpoint (ElevenLabs Scribe v2 via
+ * Mesh) — this is a DIFFERENT provider from the TTS one above, and it uses
+ * ISO 639-3 three-letter codes ("eng", "hin"), not locale codes like
+ * "en-IN"/"hi-IN". Reusing SARVAM_LANGUAGE_CODE here is what was causing
+ * "Invalid language code received: 'hi-IN'" — Sarvam and Scribe just don't
+ * share a code format.
+ *
+ * "hinglish" has no entry on purpose: there's no code-mixed option in
+ * Scribe's list, and forcing "hin" would mis-transcribe the English half of
+ * every sentence. Leaving it undefined tells Scribe to auto-detect, which
+ * handles code-mixed speech far better than forcing either language.
+ */
+export const SCRIBE_LANGUAGE_CODE: Partial<Record<LanguageOption, string>> = {
+  english: "eng",
+  hindi: "hin",
+  // hinglish: intentionally omitted — auto-detect instead
+};
