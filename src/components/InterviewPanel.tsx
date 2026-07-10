@@ -6,12 +6,14 @@ import { Mic, MicOff, User, Send, AlertCircle, Sparkles } from "lucide-react";
 import {
   type InterviewSetup,
   type InterviewMessage,
+  type StoredInterviewResult,
   SETUP_STORAGE_KEY,
   RESULT_STORAGE_KEY,
   LANGUAGE_TABS,
   VOICE_TABS,
 } from "../lib/meshAPI";
 import { useInterviewAPI } from "../hook/useInterviewAPi";
+import { generateSpeech } from "../lib/voice-client";
 import ChatBubble from "../components/chatBubble";
 import { CursorGlow } from "../components/CursorGlow";
 
@@ -24,7 +26,7 @@ function InterviewPanel() {
     start: apiStart,
     next: apiNext,
     evaluate: apiEvaluate,
-    isClosingStatement,
+    transcribe: apiTranscribe,
     error: apiError,
   } = useInterviewAPI();
 
@@ -32,7 +34,8 @@ function InterviewPanel() {
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
   const [isPreparing, setIsPreparing] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -41,12 +44,41 @@ function InterviewPanel() {
   const [textInput, setTextInput] = useState("");
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
   const messagesRef = useRef<InterviewMessage[]>([]);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  // Mic feature check — MediaRecorder + getUserMedia, and a secure context
+  useEffect(() => {
+    const hasRecorder =
+      typeof window !== "undefined" &&
+      typeof MediaRecorder !== "undefined" &&
+      !!navigator.mediaDevices?.getUserMedia;
+
+    if (!hasRecorder) {
+      setMicSupported(false);
+      setMicError(
+        "Voice recording isn't supported in this browser. Use the text box below instead.",
+      );
+      return;
+    }
+
+    if (
+      window.location.protocol !== "https:" &&
+      window.location.hostname !== "localhost"
+    ) {
+      setMicSupported(false);
+      setMicError(
+        "Voice input needs a secure connection (HTTPS or localhost). Use the text box below instead.",
+      );
+    }
+  }, []);
 
   useEffect(() => {
     const raw = sessionStorage.getItem(SETUP_STORAGE_KEY);
@@ -85,79 +117,19 @@ function InterviewPanel() {
   }, [setup]);
 
   useEffect(() => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      setMicSupported(false);
-      setMicError(
-        "Speech recognition isn't supported in this browser. Try Chrome or Edge, or use the text box below.",
-      );
-      return;
-    }
-
-    if (
-      typeof window !== "undefined" &&
-      window.location.protocol !== "https:" &&
-      window.location.hostname !== "localhost"
-    ) {
-      setMicSupported(false);
-      setMicError(
-        "Voice input needs a secure connection (HTTPS or localhost). Use the text box below instead.",
-      );
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang =
-      LANGUAGE_TABS.find((l) => l.id === setup?.language)?.ttsLang || "en-US";
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      submitAnswer(transcript);
-    };
-
-    recognition.onerror = (event: any) => {
-      setIsListening(false);
-      const code = event?.error;
-      if (code === "not-allowed" || code === "service-not-allowed") {
-        setMicError(
-          "Microphone permission was denied. Click the lock icon in your address bar and allow the microphone, then try again.",
-        );
-      } else if (code === "no-speech") {
-        setMicError(
-          "Didn't catch that — no speech detected. Try again, or type your answer below.",
-        );
-      } else if (code === "network") {
-        setMicError(
-          "Network issue while processing speech. Check your connection and try again.",
-        );
-      } else if (code === "audio-capture") {
-        setMicError(
-          "No microphone was found. Check that one is connected and try again.",
-        );
-      } else {
-        setMicError(
-          "Voice input hit an error. You can type your answer below instead.",
-        );
-      }
-    };
-
-    recognition.onend = () => setIsListening(false);
-
-    recognitionRef.current = recognition;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setup?.language]);
-
-  useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
   }, [messages, isThinking]);
+
+  // Clean up any in-flight audio on unmount
+  useEffect(() => {
+    return () => {
+      audioElRef.current?.pause();
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    };
+  }, []);
 
   function pushMessage(role: "ai" | "candidate", text: string) {
     setMessages((prev) => [
@@ -166,55 +138,85 @@ function InterviewPanel() {
     ]);
   }
 
-  function speak(text: string) {
-    if (!("speechSynthesis" in window) || !setup) return;
-    const voiceConfig =
-      VOICE_TABS.find((v) => v.id === setup.voiceGender) || VOICE_TABS[2];
-    const langConfig =
-      LANGUAGE_TABS.find((l) => l.id === setup.language) || LANGUAGE_TABS[0];
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.pitch = voiceConfig.pitch;
-    utterance.rate = voiceConfig.rate;
-    utterance.lang = langConfig.ttsLang;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-  }
-
-  async function requestMicPermission(): Promise<boolean> {
-    if (!navigator.mediaDevices?.getUserMedia) return true;
+  // Real TTS via Mesh/Sarvam instead of the browser's speechSynthesis.
+  // If it fails for any reason, the text is already visible in the chat,
+  // so we fail silently rather than blocking the interview.
+  async function speak(text: string) {
+    if (!setup) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach((t) => t.stop());
-      return true;
+      setIsSpeaking(true);
+      const blob = await generateSpeech({
+        text,
+        language: setup.language,
+        gender: setup.voiceGender,
+      });
+
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      audioUrlRef.current = url;
+
+      const audio = new Audio(url);
+      audioElRef.current = audio;
+      audio.onended = () => setIsSpeaking(false);
+      audio.onerror = () => setIsSpeaking(false);
+      await audio.play();
     } catch {
-      setMicError(
-        "Microphone permission was denied. Click the lock icon in your address bar and allow the microphone, then try again.",
-      );
-      return false;
+      setIsSpeaking(false);
     }
   }
 
-  async function toggleListening() {
+  async function toggleRecording() {
     if (!micSupported || isThinking || isComplete || isSpeaking) return;
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
+
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
       return;
     }
-    setMicError(null);
-    const granted = await requestMicPermission();
-    if (!granted) return;
 
+    setMicError(null);
     try {
-      recognitionRef.current?.start();
-      setIsListening(true);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+
+        if (!setup || blob.size === 0) {
+          setMicError(
+            "Didn't catch any audio — try again or type your answer.",
+          );
+          return;
+        }
+
+        setIsTranscribing(true);
+        const text = await apiTranscribe(blob, setup);
+        setIsTranscribing(false);
+
+        if (!text) {
+          setMicError(
+            apiError ||
+              "Couldn't understand that. Try again or type your answer.",
+          );
+          return;
+        }
+
+        submitAnswer(text);
+      };
+
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
     } catch {
-      setIsListening(false);
-      setMicError("Couldn't start the microphone. Try again in a moment.");
+      setMicError(
+        "Microphone permission was denied. Allow it in your browser settings and try again.",
+      );
     }
   }
 
@@ -235,7 +237,6 @@ function InterviewPanel() {
 
   async function submitAnswer(text: string) {
     if (!setup || !text.trim() || isThinking || isComplete) return;
-    setIsListening(false);
     pushMessage("candidate", text);
 
     setIsThinking(true);
@@ -243,10 +244,10 @@ function InterviewPanel() {
       ...messagesRef.current,
       { id: nextId(), role: "candidate" as const, text, timestamp: Date.now() },
     ];
-    const nextQuestion = await apiNext(setup, updatedTranscript);
+    const result = await apiNext(setup, updatedTranscript);
     setIsThinking(false);
 
-    if (!nextQuestion) {
+    if (!result) {
       pushMessage(
         "ai",
         "Sorry — something went wrong on my end generating the next question. Could you try sending that answer again?",
@@ -254,17 +255,17 @@ function InterviewPanel() {
       return;
     }
 
-    pushMessage("ai", nextQuestion);
-    speak(nextQuestion);
+    pushMessage("ai", result.text);
+    speak(result.text);
 
-    if (isClosingStatement(nextQuestion)) {
+    if (result.isFinal) {
       setIsComplete(true);
       const finalTranscript = [
         ...updatedTranscript,
         {
           id: nextId(),
           role: "ai" as const,
-          text: nextQuestion,
+          text: result.text,
           timestamp: Date.now(),
         },
       ];
@@ -284,15 +285,13 @@ function InterviewPanel() {
       return;
     }
 
-    sessionStorage.setItem(
-      RESULT_STORAGE_KEY,
-      JSON.stringify({
-        setup,
-        transcript,
-        evaluation,
-        completedAt: Date.now(),
-      }),
-    );
+    const result: StoredInterviewResult = {
+      setup,
+      transcript,
+      evaluation,
+      completedAt: Date.now(),
+    };
+    sessionStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify(result));
     setIsRedirecting(true);
     setTimeout(() => router.push("/dashboard"), 1200);
   }
@@ -305,29 +304,31 @@ function InterviewPanel() {
       ? "Interview complete"
       : isThinking
         ? "Interviewer is thinking…"
-        : isSpeaking
-          ? "Interviewer is speaking…"
-          : isListening
-            ? "Listening…"
-            : "In progress";
+        : isTranscribing
+          ? "Understanding your answer…"
+          : isSpeaking
+            ? "Interviewer is speaking…"
+            : isRecording
+              ? "Recording…"
+              : "In progress";
 
-  const micDisabled = !micSupported || isThinking || isComplete || isSpeaking;
+  const micDisabled =
+    !micSupported || isThinking || isComplete || isSpeaking || isTranscribing;
   const inputDisabled = isThinking || isComplete;
 
   const voiceLabel =
-    VOICE_TABS.find((v) => v.id === setup.voiceGender)?.label || "Neutral";
+    VOICE_TABS.find((v) => v.id === setup.voiceGender)?.label || "Male";
   const languageLabel =
     LANGUAGE_TABS.find((l) => l.id === setup.language)?.label || "English";
 
-  const orbBarColor = isListening ? "#3B5B92" : "#2F5D5A";
-  const barSpeed = isSpeaking ? "0.55s" : isListening ? "0.5s" : "2.6s";
+  const orbBarColor = isRecording ? "#3B5B92" : "#2F5D5A";
+  const barSpeed = isSpeaking ? "0.55s" : isRecording ? "0.5s" : "2.6s";
 
   return (
     <div
       className="relative h-screen w-full flex flex-col overflow-hidden"
       style={{ backgroundColor: "#F9F9F6" }}
     >
-      {/* Cursor glow, dialed back so it doesn't compete with the interview */}
       <div className="opacity-50">
         <CursorGlow />
       </div>
@@ -398,7 +399,7 @@ function InterviewPanel() {
                   transform: isSpeaking ? "scale(1.04)" : "scale(1)",
                   boxShadow: isSpeaking
                     ? "0 0 0 16px #2F5D5A14"
-                    : isListening
+                    : isRecording
                       ? "0 0 0 16px #3B5B9214"
                       : "0 0 0 0px #2F5D5A00",
                   transition: "box-shadow .3s, transform .3s",
@@ -432,26 +433,28 @@ function InterviewPanel() {
                     ? messages[messages.length - 1]?.text
                     : isThinking
                       ? "Thinking through your answer…"
-                      : "Go ahead — I'm listening."}
+                      : isTranscribing
+                        ? "Understanding your answer…"
+                        : "Go ahead — I'm listening."}
               </p>
 
               {!isComplete && (
                 <div className="flex flex-col items-center gap-2">
                   <button
-                    onClick={toggleListening}
+                    onClick={toggleRecording}
                     disabled={micDisabled}
                     className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-50"
                     style={{
-                      backgroundColor: isListening ? "#2F5D5A" : "#FFFFFF",
-                      color: isListening ? "#FFFFFF" : "#4A4640",
+                      backgroundColor: isRecording ? "#2F5D5A" : "#FFFFFF",
+                      color: isRecording ? "#FFFFFF" : "#4A4640",
                       border: "1px solid #E9E8E6",
-                      boxShadow: isListening ? "0 0 0 10px #2F5D5A22" : "none",
+                      boxShadow: isRecording ? "0 0 0 10px #2F5D5A22" : "none",
                     }}
                     aria-label={
-                      isListening ? "Stop recording" : "Start recording"
+                      isRecording ? "Stop recording" : "Start recording"
                     }
                   >
-                    {isListening ? <Mic size={24} /> : <MicOff size={24} />}
+                    {isRecording ? <Mic size={24} /> : <MicOff size={24} />}
                   </button>
                   {isSpeaking && (
                     <p className="text-xs" style={{ color: "#9A9A94" }}>
@@ -478,8 +481,8 @@ function InterviewPanel() {
               width: 148,
               height: 108,
               backgroundColor: "#20403D",
-              border: `2px solid ${isListening ? "#2F5D5A" : "#0B0B0B22"}`,
-              boxShadow: isListening
+              border: `2px solid ${isRecording ? "#2F5D5A" : "#0B0B0B22"}`,
+              boxShadow: isRecording
                 ? "0 0 0 4px #2F5D5A33"
                 : "0 4px 14px rgba(11,11,11,0.12)",
             }}
@@ -493,7 +496,7 @@ function InterviewPanel() {
             </span>
             <span
               className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-              style={{ backgroundColor: isListening ? "#4CAF7D" : "#9A9A94" }}
+              style={{ backgroundColor: isRecording ? "#4CAF7D" : "#9A9A94" }}
             />
           </div>
         </div>
