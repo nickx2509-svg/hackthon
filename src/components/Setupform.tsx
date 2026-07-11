@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Sparkles,
@@ -30,6 +30,20 @@ import {
 import { useInterviewAPI } from "../hook/useInterviewAPi";
 import SearchableCombobox from "../components/SearchableCombobox";
 import { useGeminiTTS } from "../hook/useGemeniTTS";
+
+// Draft key — separate from SETUP_STORAGE_KEY (which holds the *submitted*
+// setup used by the interview page). This one just keeps whatever the
+// person has typed so far so a refresh doesn't wipe an unfinished form.
+const SETUP_DRAFT_KEY = "mockmate_interview_setup_draft";
+
+function loadDraft(): InterviewSetup | null {
+  try {
+    const raw = sessionStorage.getItem(SETUP_DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as InterviewSetup) : null;
+  } catch {
+    return null;
+  }
+}
 
 const EXPERIENCE_LEVELS = [
   "Entry Level",
@@ -73,10 +87,23 @@ function SetupForm() {
   } = useInterviewAPI();
   const { speak, stop, isSpeaking } = useGeminiTTS();
 
-  const [formData, setFormData] = useState<InterviewSetup>(initialState);
+  // Restore any in-progress draft on first render, instead of always
+  // starting blank — this is what makes a refresh keep your typed values.
+  const [formData, setFormData] = useState<InterviewSetup>(
+    () => loadDraft() ?? initialState,
+  );
   const [errors, setErrors] = useState<FormErrors>({});
   const [isStarting, setIsStarting] = useState(false);
   const [hoveredVoice, setHoveredVoice] = useState<VoiceOption | null>(null);
+
+  // Persist the draft on every change so a refresh restores it exactly.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(SETUP_DRAFT_KEY, JSON.stringify(formData));
+    } catch {
+      // non-fatal — worst case a refresh loses the draft this one time
+    }
+  }, [formData]);
 
   const handleChange = (field: keyof InterviewSetup, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -111,6 +138,8 @@ function SetupForm() {
 
     setIsStarting(true);
     sessionStorage.setItem(SETUP_STORAGE_KEY, JSON.stringify(formData));
+    // The draft's job is done once the interview actually starts.
+    sessionStorage.removeItem(SETUP_DRAFT_KEY);
 
     setTimeout(() => {
       router.push("/interview");
@@ -227,7 +256,6 @@ function SetupForm() {
             error={errors.experienceLevel}
           />
 
-          {/* Interview Language — tab group */}
           <div>
             <label
               className="flex items-center gap-1.5 text-sm font-medium mb-1.5"
@@ -269,7 +297,6 @@ function SetupForm() {
             </div>
           </div>
 
-          {/* Interviewer Voice — tab group with hover-to-preview */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label
@@ -379,7 +406,6 @@ function SetupForm() {
             </p>
           </div>
 
-          {/* Mic behavior note */}
           <div
             className="flex items-start gap-2.5 rounded-xl px-4 py-3"
             style={{ backgroundColor: "#F3F3F0", border: "1px solid #E9E8E6" }}

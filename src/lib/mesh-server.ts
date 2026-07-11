@@ -27,6 +27,7 @@ type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 export async function meshChat(
   messages: ChatMessage[],
   model: string = "anthropic/claude-sonnet-4.6",
+  maxTokens: number = 1024,
 ): Promise<string> {
   const res = await fetch(`${MESH_BASE_URL}/chat/completions`, {
     method: "POST",
@@ -34,7 +35,7 @@ export async function meshChat(
       Authorization: `Bearer ${getKey()}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model, messages }),
+    body: JSON.stringify({ model, messages, max_tokens: maxTokens }),
   });
 
   if (!res.ok) {

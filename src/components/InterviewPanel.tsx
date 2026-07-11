@@ -18,6 +18,8 @@ import {
   CheckCircle2,
   Radio,
   Timer as TimerIcon,
+  AlarmClock,
+  LogOut,
 } from "lucide-react";
 import {
   type InterviewSetup,
@@ -33,8 +35,6 @@ import { generateSpeech } from "../lib/voice-client";
 import ChatBubble from "../components/chatBubble";
 import { CursorGlow } from "../components/CursorGlow";
 
-// Display face for the spoken line — the one place we spend some
-// typographic character. Everything else stays on the system sans.
 const fraunces = Fraunces({
   subsets: ["latin"],
   weight: ["500", "600"],
@@ -45,10 +45,44 @@ const fraunces = Fraunces({
 let idCounter = 0;
 const nextId = () => `msg_${Date.now()}_${idCounter++}`;
 
-// How long to pause after the interviewer finishes their closing line
-// before showing the "generating report" loader — gives the moment room
-// to breathe instead of yanking straight to a redirect.
 const POST_CLOSING_PAUSE_MS = 5000;
+const ANSWER_TIME_LIMIT_SECONDS = 60;
+const ANSWER_WARNING_THRESHOLD_SECONDS = 20;
+
+// Persists the whole in-progress interview so a refresh restores it exactly
+// instead of losing the conversation and restarting from the greeting.
+const SESSION_STATE_KEY = "mockmate_interview_session_state";
+
+interface PersistedSessionState {
+  setupSnapshot: InterviewSetup;
+  messages: InterviewMessage[];
+  isComplete: boolean;
+  isGeneratingReport: boolean;
+  elapsedSeconds: number;
+  answerSecondsLeft: number;
+}
+
+function saveSession(state: PersistedSessionState) {
+  try {
+    sessionStorage.setItem(SESSION_STATE_KEY, JSON.stringify(state));
+  } catch {
+    // sessionStorage can fail in private-browsing edge cases — non-fatal,
+    // just means refresh-restore won't work this time.
+  }
+}
+
+function loadSession(): PersistedSessionState | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_STATE_KEY);
+    return raw ? (JSON.parse(raw) as PersistedSessionState) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearSession() {
+  sessionStorage.removeItem(SESSION_STATE_KEY);
+}
 
 type StageStatus =
   | "preparing"
@@ -159,6 +193,19 @@ function InterviewPanel() {
   const [toast, setToast] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
+  const [answerSecondsLeft, setAnswerSecondsLeft] = useState(
+    ANSWER_TIME_LIMIT_SECONDS,
+  );
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const answerTimerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+
+  // Marks that we've finished the mount-time restore-or-start decision, so
+  // the persistence-writer effect doesn't fire (and overwrite a good saved
+  // session with blank initial state) before restore has even run.
+  const hydratedRef = useRef(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<InterviewMessage[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -170,7 +217,6 @@ function InterviewPanel() {
     messagesRef.current = messages;
   }, [messages]);
 
-  // Mic feature check — MediaRecorder + getUserMedia, and a secure context
   useEffect(() => {
     const hasRecorder =
       typeof window !== "undefined" &&
@@ -203,19 +249,55 @@ function InterviewPanel() {
     setSetup(JSON.parse(raw));
   }, [router]);
 
+  // Mount-time: either restore an in-progress session (refresh recovery)
+  // or start a genuinely new interview — never both.
   useEffect(() => {
     if (!setup) return;
     let cancelled = false;
 
+    const saved = loadSession();
+    const matchesCurrentSetup =
+      saved && JSON.stringify(saved.setupSnapshot) === JSON.stringify(setup);
+
+    if (matchesCurrentSetup && saved) {
+      // Already finished and scored before the refresh — nothing left to
+      // show here, the result lives on /dashboard.
+      if (sessionStorage.getItem(RESULT_STORAGE_KEY)) {
+        router.replace("/dashboard");
+        return;
+      }
+
+      setMessages(saved.messages);
+      setIsComplete(saved.isComplete);
+      setElapsedSeconds(saved.elapsedSeconds);
+      setIsPreparing(false);
+      hydratedRef.current = true;
+
+      if (saved.isComplete) {
+        // Refresh happened mid-evaluation (or right after) — the report
+        // may never have been saved, so regenerate it rather than leaving
+        // the candidate stuck on a dead screen.
+        finishInterview(saved.messages);
+      } else {
+        // Mic can't survive a refresh either way, so we always resume
+        // un-recording, but the countdown itself picks up where it left off.
+        startAnswerTimer(saved.answerSecondsLeft);
+      }
+      return;
+    }
+
+    // No usable saved session — genuinely new interview.
+    clearSession();
     (async () => {
       setIsPreparing(true);
       const greeting = await apiStart(setup);
       if (cancelled) return;
       setIsPreparing(false);
+      hydratedRef.current = true;
 
       if (greeting) {
         pushMessage("ai", greeting);
-        speak(greeting);
+        speak(greeting).then(() => startAnswerTimer());
       } else {
         pushMessage(
           "ai",
@@ -230,6 +312,27 @@ function InterviewPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup]);
 
+  // Persist the session on every change that matters, so a refresh at any
+  // point restores this exact state.
+  useEffect(() => {
+    if (!setup || !hydratedRef.current) return;
+    saveSession({
+      setupSnapshot: setup,
+      messages,
+      isComplete,
+      isGeneratingReport,
+      elapsedSeconds,
+      answerSecondsLeft,
+    });
+  }, [
+    setup,
+    messages,
+    isComplete,
+    isGeneratingReport,
+    elapsedSeconds,
+    answerSecondsLeft,
+  ]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
@@ -237,8 +340,6 @@ function InterviewPanel() {
     });
   }, [messages, isThinking]);
 
-  // Never show raw API/JSON error text to the person — swap it for a
-  // clean, muted notification instead.
   useEffect(() => {
     if (!apiError) return;
     const looksRaw = apiError.trim().startsWith("{") || apiError.length > 140;
@@ -255,15 +356,50 @@ function InterviewPanel() {
     return () => {
       audioElRef.current?.pause();
       if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      clearAnswerTimer();
     };
   }, []);
 
-  // Simple session clock — starts once prep is done, stops once complete.
   useEffect(() => {
     if (isPreparing || isComplete) return;
     const t = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
     return () => clearInterval(t);
   }, [isPreparing, isComplete]);
+
+  useEffect(() => {
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      setShowExitConfirm(true);
+      window.history.pushState(null, "", window.location.href);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  function clearAnswerTimer() {
+    if (answerTimerIntervalRef.current) {
+      clearInterval(answerTimerIntervalRef.current);
+      answerTimerIntervalRef.current = null;
+    }
+  }
+
+  // Now accepts an optional starting value so a restored session resumes
+  // the countdown from exactly where it left off instead of resetting to 60.
+  function startAnswerTimer(fromSeconds: number = ANSWER_TIME_LIMIT_SECONDS) {
+    clearAnswerTimer();
+    setAnswerSecondsLeft(fromSeconds);
+    answerTimerIntervalRef.current = setInterval(() => {
+      setAnswerSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearAnswerTimer();
+          clearSession();
+          router.push("/");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
 
   function pushMessage(role: "ai" | "candidate", text: string) {
     setMessages((prev) => [
@@ -272,9 +408,6 @@ function InterviewPanel() {
     ]);
   }
 
-  // Real TTS via Mesh/Sarvam. Returns a promise that resolves once the
-  // audio actually finishes playing, so callers can wait for the
-  // interviewer to genuinely stop talking before doing anything else.
   function speak(text: string): Promise<void> {
     return new Promise((resolve) => {
       if (!setup) {
@@ -329,6 +462,8 @@ function InterviewPanel() {
       const recorder = new MediaRecorder(stream);
       audioChunksRef.current = [];
 
+      clearAnswerTimer();
+
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
@@ -339,6 +474,7 @@ function InterviewPanel() {
 
         if (!setup || blob.size === 0) {
           setMicError("Didn't catch any audio — try again.");
+          startAnswerTimer();
           return;
         }
 
@@ -348,6 +484,7 @@ function InterviewPanel() {
 
         if (!text) {
           setMicError(apiError || "Couldn't understand that. Try again.");
+          startAnswerTimer();
           return;
         }
 
@@ -364,6 +501,7 @@ function InterviewPanel() {
 
   async function submitAnswer(text: string) {
     if (!setup || !text.trim() || isThinking || isComplete) return;
+    clearAnswerTimer();
     pushMessage("candidate", text);
 
     setIsThinking(true);
@@ -379,14 +517,16 @@ function InterviewPanel() {
         "ai",
         "Sorry — something went wrong generating the next question. Try answering again.",
       );
+      startAnswerTimer();
       return;
     }
 
     pushMessage("ai", result.text);
-    await speak(result.text); // wait for the sentence to actually finish
+    await speak(result.text);
 
     if (result.isFinal) {
       setIsComplete(true);
+      clearAnswerTimer();
       const finalTranscript = [
         ...updatedTranscript,
         {
@@ -398,6 +538,8 @@ function InterviewPanel() {
       ];
       await new Promise((r) => setTimeout(r, POST_CLOSING_PAUSE_MS));
       finishInterview(finalTranscript);
+    } else {
+      startAnswerTimer();
     }
   }
 
@@ -422,7 +564,15 @@ function InterviewPanel() {
       completedAt: Date.now(),
     };
     sessionStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify(result));
+    clearSession();
     router.push("/dashboard");
+  }
+
+  function handleConfirmExit() {
+    clearAnswerTimer();
+    clearSession();
+    setShowExitConfirm(false);
+    router.push("/");
   }
 
   if (!setup) return null;
@@ -468,6 +618,14 @@ function InterviewPanel() {
   );
   const exchangeCount = messages.filter((m) => m.role === "candidate").length;
 
+  const showAnswerWarning =
+    !isComplete &&
+    !isPreparing &&
+    !isGeneratingReport &&
+    !isRecording &&
+    answerSecondsLeft > 0 &&
+    answerSecondsLeft <= ANSWER_WARNING_THRESHOLD_SECONDS;
+
   return (
     <div
       className="relative h-screen w-full flex flex-col overflow-hidden"
@@ -482,7 +640,65 @@ function InterviewPanel() {
         <CursorGlow />
       </div>
 
-      {/* Error toast — top right, muted red, never shows raw error text */}
+      {showExitConfirm && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center px-4"
+          style={{
+            backgroundColor: "rgba(59,91,146,0.28)",
+            backdropFilter: "blur(3px)",
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl p-6 flex flex-col items-center text-center gap-3"
+            style={{
+              backgroundColor: "#EAF0FA",
+              border: "1px solid #C9D9EE",
+              boxShadow: "0 30px 60px -20px rgba(59,91,146,0.5)",
+            }}
+          >
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center"
+              style={{
+                backgroundColor: "#DCE7F7",
+                border: "1px solid #C9D9EE",
+              }}
+            >
+              <LogOut size={20} style={{ color: "#3B5B92" }} />
+            </div>
+            <p
+              className={`${fraunces.className} text-lg font-semibold`}
+              style={{ color: "#20345C" }}
+            >
+              Are you sure you want to end the call?
+            </p>
+            <p className="text-sm" style={{ color: "#3B5B92" }}>
+              Going back will end this interview — your progress won&apos;t be
+              saved.
+            </p>
+            <div className="flex gap-2.5 w-full mt-2">
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                className="flex-1 rounded-lg py-2.5 text-sm font-medium transition-all duration-150"
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  color: "#3B5B92",
+                  border: "1px solid #C9D9EE",
+                }}
+              >
+                Stay
+              </button>
+              <button
+                onClick={handleConfirmExit}
+                className="flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all duration-150"
+                style={{ backgroundColor: "#3B5B92", color: "#FFFFFF" }}
+              >
+                OK, end it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && (
         <div
           className="fixed top-5 right-5 z-[999] flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-medium max-w-xs"
@@ -498,7 +714,6 @@ function InterviewPanel() {
         </div>
       )}
 
-      {/* Header */}
       <div
         className="relative z-[2] flex items-center justify-between px-6 py-4 flex-shrink-0"
         style={{
@@ -609,7 +824,6 @@ function InterviewPanel() {
         </div>
       </div>
 
-      {/* Main area: stage + sidebar */}
       <div className="relative z-[2] flex-1 flex min-h-0">
         <div className="relative flex-1 flex flex-col items-center justify-center px-8 gap-7">
           {isPreparing ? (
@@ -664,7 +878,6 @@ function InterviewPanel() {
             </div>
           ) : (
             <>
-              {/* Language / voice pill */}
               <div
                 className="flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold"
                 style={{
@@ -678,8 +891,6 @@ function InterviewPanel() {
                 {languageLabel} · {voiceLabel} voice
               </div>
 
-              {/* Voice orb with a slow rotating tick ring — the one
-                  signature flourish, everything else stays quiet */}
               <div
                 className="relative flex items-center justify-center"
                 style={{ width: 260, height: 260 }}
@@ -743,7 +954,6 @@ function InterviewPanel() {
                 </div>
               </div>
 
-              {/* Spoken / status line */}
               {isThinking ? (
                 <div
                   className="flex items-center gap-2.5 rounded-2xl px-5 py-3 text-sm font-medium"
@@ -833,8 +1043,21 @@ function InterviewPanel() {
                     </button>
                   </div>
 
-                  {/* Muted pill note explaining the mic lock during speech */}
-                  {isSpeaking && (
+                  {showAnswerWarning && (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold"
+                      style={{
+                        backgroundColor: "#FBEAE7",
+                        color: "#B5502E",
+                        border: "1px solid #F2C9BC",
+                      }}
+                    >
+                      <AlarmClock size={12} />
+                      {answerSecondsLeft}s to answer or you&apos;ll be sent home
+                    </span>
+                  )}
+
+                  {isSpeaking && !showAnswerWarning && (
                     <span
                       className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium"
                       style={{
@@ -871,17 +1094,28 @@ function InterviewPanel() {
             style={{
               width: 148,
               height: 108,
-              background: "linear-gradient(160deg, #24443F 0%, #1A332F 100%)",
-              border: `2px solid ${isRecording ? "#2F5D5A" : "#0B0B0B22"}`,
+              background: "linear-gradient(160deg, #4A5B57 0%, #3A4844 100%)",
+              border: `2px solid ${isRecording ? "#2F5D5A" : "#0B0B0B18"}`,
               boxShadow: isRecording
-                ? "0 0 0 4px #2F5D5A33, 0 18px 34px -14px rgba(11,11,11,0.5)"
-                : "0 14px 30px -12px rgba(11,11,11,0.45)",
+                ? "0 0 0 4px #2F5D5A2A, 0 14px 28px -14px rgba(11,11,11,0.35)"
+                : "0 12px 26px -14px rgba(11,11,11,0.3)",
             }}
           >
-            <User size={48} strokeWidth={1.5} style={{ color: "#EEF3F2" }} />
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.14)",
+              }}
+            >
+              <User size={24} strokeWidth={1.6} style={{ color: "#EAF3F0" }} />
+            </div>
             <span
               className="absolute bottom-1.5 left-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded"
-              style={{ backgroundColor: "#0B0B0B66", color: "#FFFFFF" }}
+              style={{
+                backgroundColor: "rgba(11,11,11,0.35)",
+                color: "#FFFFFF",
+              }}
             >
               You
             </span>
@@ -895,7 +1129,6 @@ function InterviewPanel() {
           </div>
         </div>
 
-        {/* Chat sidebar */}
         <div
           className="w-[360px] flex-shrink-0 flex flex-col min-h-0"
           style={{
