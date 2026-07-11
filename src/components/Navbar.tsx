@@ -37,14 +37,14 @@ export function Navbar() {
 
   // Close on Escape
   useEffect(() => {
-    function onKey(e) {
+    function onKey(e: any) {
       if (e.key === "Escape") setMobileOpen(false);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  function scrollToSection(id) {
+  function scrollToSection(id: any) {
     setActiveId(id);
     setMobileOpen(false);
     const el = document.getElementById(id);
