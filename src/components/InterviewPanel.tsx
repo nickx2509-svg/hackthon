@@ -263,7 +263,7 @@ function InterviewPanel() {
       // Already finished and scored before the refresh — nothing left to
       // show here, the result lives on /dashboard.
       if (sessionStorage.getItem(RESULT_STORAGE_KEY)) {
-        router.replace("/dashboard");
+        router.replace("/");
         return;
       }
 
