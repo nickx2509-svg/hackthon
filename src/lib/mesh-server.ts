@@ -7,11 +7,14 @@ const MESH_BASE_URL = "https://api.meshapi.ai/v1";
 
 function getKey(): string {
   const key = process.env.MESH_API_KEY;
+
+  console.log("Mesh Key Exists:", !!key);
+  console.log("Mesh Key Prefix:", key?.slice(0, 12));
+
   if (!key) {
-    throw new Error(
-      "MESH_API_KEY is not set. Add it to .env.local (get it from app.meshapi.ai).",
-    );
+    throw new Error("MESH_API_KEY missing");
   }
+
   return key;
 }
 
@@ -87,6 +90,13 @@ export async function meshTTS(opts: {
   return await res.arrayBuffer();
 }
 
+/**
+ * Transcribes a recorded answer to text using ElevenLabs Scribe v2 via
+ * Mesh. Scribe v2 supports 90+ languages via ISO 639-3 codes (see
+ * SCRIBE_LANGUAGE_CODE in lib/meshAPI.ts) — leave languageCode undefined
+ * to let it auto-detect, which is what we do for "hinglish" since Scribe
+ * has no dedicated code-mixed option.
+ */
 export async function meshTranscribe(
   audio: Blob,
   opts: {
@@ -97,9 +107,7 @@ export async function meshTranscribe(
   const formData = new FormData();
 
   formData.append("file", audio, opts.filename ?? "audio.webm");
-
-  // ⚠️ Replace this with the exact Mesh transcription model
-  formData.append("model", "YOUR_TRANSCRIPTION_MODEL");
+  formData.append("model", "elevenlabs/scribe_v2");
 
   if (opts.languageCode) {
     formData.append("language", opts.languageCode);
