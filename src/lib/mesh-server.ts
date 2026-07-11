@@ -51,11 +51,11 @@ export async function meshChat(
  */
 export async function meshTTS(opts: {
   text: string;
-  languageCode: string; // e.g. "en-IN" / "hi-IN"
-  speaker: string; // e.g. "priya" / "shubh"
-  model?: string; // default: sarvam/bulbul:v3
-  format?: string; // default: mp3_44100_128
-}): Promise<Buffer> {
+  languageCode: string;
+  speaker: string;
+  model?: string;
+  format?: string;
+}): Promise<ArrayBuffer> {
   const {
     text,
     languageCode,
@@ -73,8 +73,8 @@ export async function meshTTS(opts: {
     body: JSON.stringify({
       model,
       input: text,
-      speaker, // Sarvam-specific: ignored by non-Sarvam models
-      target_language_code: languageCode, // Sarvam-specific
+      speaker,
+      target_language_code: languageCode,
       stream: false,
       response_format: format,
     }),
@@ -84,35 +84,5 @@ export async function meshTTS(opts: {
     throw new Error(`Mesh TTS failed: ${await res.text()}`);
   }
 
-  const arrayBuffer = await res.arrayBuffer();
-  return Buffer.from(arrayBuffer);
-}
-
-/**
- * Transcribes a recorded answer (webm/mp3/wav blob) to text.
- * Uses ElevenLabs Scribe v2, which handles Hindi/English/code-mixed
- * audio well. Leave languageCode undefined for auto-detection.
- * Docs: https://developers.meshapi.ai/docs/guides/speech-to-text
- */
-export async function meshTranscribe(
-  file: Blob,
-  opts?: { languageCode?: string; filename?: string },
-): Promise<string> {
-  const form = new FormData();
-  form.append("model", "elevenlabs/scribe_v2");
-  form.append("file", file, opts?.filename ?? "answer.webm");
-  if (opts?.languageCode) form.append("language_code", opts.languageCode);
-
-  const res = await fetch(`${MESH_BASE_URL}/audio/transcriptions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${getKey()}` }, // no Content-Type: browser/runtime sets multipart boundary
-    body: form,
-  });
-
-  if (!res.ok) {
-    throw new Error(`Mesh transcription failed: ${await res.text()}`);
-  }
-
-  const data = await res.json();
-  return data.text as string;
+  return await res.arrayBuffer();
 }

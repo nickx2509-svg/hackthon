@@ -42,6 +42,14 @@ export async function POST(req: Request) {
         "Cache-Control": "no-store",
       },
     });
+
+    return new NextResponse(audioBuffer, {
+      status: 200,
+      headers: {
+        "Content-Type": "audio/mpeg",
+        "Cache-Control": "no-store",
+      },
+    });
   } catch (error: any) {
     console.error("TTS preview route error:", error);
     return NextResponse.json(
