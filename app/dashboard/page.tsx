@@ -52,7 +52,13 @@ function tierOf(scoreOutOf10: number): Tier {
 
 const TIER_STYLE: Record<
   Tier,
-  { color: string; bg: string; border: string; label: string; Icon: React.ElementType }
+  {
+    color: string;
+    bg: string;
+    border: string;
+    label: string;
+    Icon: React.ElementType;
+  }
 > = {
   high: {
     color: "#2F5D5A",
@@ -161,7 +167,7 @@ function ScorePillar({
   const tier = tierOf(value);
   const { color, bg } = TIER_STYLE[tier];
   return (
-    <div className="flex flex-col items-center gap-2 flex-1 min-w-[64px]">
+    <div className="flex flex-col items-center gap-2 flex-shrink-0 sm:flex-1 min-w-[58px] sm:min-w-[64px]">
       <span className="text-xs font-bold" style={{ color }}>
         {pct.toFixed(0)}%
       </span>
@@ -207,9 +213,24 @@ function ScoreRing({ score }: { score: number }) {
   const { color } = TIER_STYLE[tier];
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: 132, height: 132 }}>
-      <svg width={132} height={132} viewBox="0 0 132 132" className="-rotate-90">
-        <circle cx={66} cy={66} r={r} fill="none" stroke="#E9E8E6" strokeWidth={11} />
+    <div
+      className="relative flex items-center justify-center flex-shrink-0"
+      style={{ width: 132, height: 132 }}
+    >
+      <svg
+        width={132}
+        height={132}
+        viewBox="0 0 132 132"
+        className="-rotate-90"
+      >
+        <circle
+          cx={66}
+          cy={66}
+          r={r}
+          fill="none"
+          stroke="#E9E8E6"
+          strokeWidth={11}
+        />
         <circle
           cx={66}
           cy={66}
@@ -262,8 +283,16 @@ function Dashboard() {
     const { evaluation } = result;
     return [
       { subject: "Technical", value: evaluation.technicalKnowledge, full: 10 },
-      { subject: "Communication", value: evaluation.communicationSkills, full: 10 },
-      { subject: "Problem Solving", value: evaluation.problemSolving, full: 10 },
+      {
+        subject: "Communication",
+        value: evaluation.communicationSkills,
+        full: 10,
+      },
+      {
+        subject: "Problem Solving",
+        value: evaluation.problemSolving,
+        full: 10,
+      },
       { subject: "Language", value: evaluation.languageProficiency, full: 10 },
     ];
   }, [result]);
@@ -303,7 +332,11 @@ function Dashboard() {
         y += size + 10;
       }
 
-      function paragraph(text: string, size = 10, rgb: [number, number, number] = [74, 70, 64]) {
+      function paragraph(
+        text: string,
+        size = 10,
+        rgb: [number, number, number] = [74, 70, 64],
+      ) {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(size);
         doc.setTextColor(rgb[0], rgb[1], rgb[2]);
@@ -317,7 +350,10 @@ function Dashboard() {
 
       function bulletList(items: string[], rgb: [number, number, number]) {
         items.forEach((item) => {
-          const lines = doc.splitTextToSize(`•  ${item}`, pageWidth - margin * 2 - 10);
+          const lines = doc.splitTextToSize(
+            `•  ${item}`,
+            pageWidth - margin * 2 - 10,
+          );
           lines.forEach((line: string, idx: number) => {
             ensureSpace(16);
             doc.setFont("helvetica", "normal");
@@ -339,10 +375,18 @@ function Dashboard() {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
       doc.setTextColor(32, 64, 61);
-      doc.text(`${setup.fullName} · ${setup.role} · ${setup.experienceLevel}`, margin, 62);
+      doc.text(
+        `${setup.fullName} · ${setup.role} · ${setup.experienceLevel}`,
+        margin,
+        62,
+      );
       doc.setFontSize(9);
       doc.setTextColor(106, 106, 102);
-      doc.text(`Generated ${new Date(completedAt).toLocaleString()}`, margin, 80);
+      doc.text(
+        `Generated ${new Date(completedAt).toLocaleString()}`,
+        margin,
+        80,
+      );
       y = 128;
 
       heading("Overall Score");
@@ -350,10 +394,16 @@ function Dashboard() {
       y += 4;
 
       heading("Score Breakdown");
-      paragraph(`Technical Knowledge — ${evaluation.technicalKnowledge.toFixed(1)}/10`);
-      paragraph(`Communication Skills — ${evaluation.communicationSkills.toFixed(1)}/10`);
+      paragraph(
+        `Technical Knowledge — ${evaluation.technicalKnowledge.toFixed(1)}/10`,
+      );
+      paragraph(
+        `Communication Skills — ${evaluation.communicationSkills.toFixed(1)}/10`,
+      );
       paragraph(`Problem Solving — ${evaluation.problemSolving.toFixed(1)}/10`);
-      paragraph(`English Proficiency — ${evaluation.languageProficiency.toFixed(1)}/10`);
+      paragraph(
+        `English Proficiency — ${evaluation.languageProficiency.toFixed(1)}/10`,
+      );
       y += 6;
 
       heading("Strengths");
@@ -404,7 +454,7 @@ function Dashboard() {
 
   return (
     <div
-      className="min-h-screen w-full px-5 sm:px-8 lg:px-14 py-10"
+      className="min-h-screen w-full px-5 sm:px-8 lg:px-14 py-6 sm:py-8 lg:py-10"
       style={{
         backgroundColor: "#F9F9F6",
         backgroundImage:
@@ -418,13 +468,17 @@ function Dashboard() {
           <div>
             <span
               className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.15em] uppercase mb-3"
-              style={{ backgroundColor: "#EEF3F2", color: "#2F5D5A", border: "1px solid #DCE9E7" }}
+              style={{
+                backgroundColor: "#EEF3F2",
+                color: "#2F5D5A",
+                border: "1px solid #DCE9E7",
+              }}
             >
               <Sparkles size={11} />
               MockMate AI · Results
             </span>
             <h1
-              className="text-3xl sm:text-4xl font-semibold tracking-tight mb-2"
+              className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight mb-2"
               style={{ color: "#0B0B0B" }}
             >
               {setup.fullName}&apos;s Interview Summary
@@ -432,28 +486,44 @@ function Dashboard() {
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium"
-                style={{ backgroundColor: "#FFFFFF", color: "#4A4640", border: "1px solid #E9E8E6" }}
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  color: "#4A4640",
+                  border: "1px solid #E9E8E6",
+                }}
               >
                 <User size={12} />
                 {setup.role}
               </span>
               <span
                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium"
-                style={{ backgroundColor: "#FFFFFF", color: "#4A4640", border: "1px solid #E9E8E6" }}
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  color: "#4A4640",
+                  border: "1px solid #E9E8E6",
+                }}
               >
                 <BadgeCheck size={12} />
                 {setup.experienceLevel}
               </span>
               <span
                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium"
-                style={{ backgroundColor: "#FFFFFF", color: "#4A4640", border: "1px solid #E9E8E6" }}
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  color: "#4A4640",
+                  border: "1px solid #E9E8E6",
+                }}
               >
                 <MessageSquare size={12} />
                 {questionCount} questions
               </span>
               <span
                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium"
-                style={{ backgroundColor: "#FFFFFF", color: "#4A4640", border: "1px solid #E9E8E6" }}
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  color: "#4A4640",
+                  border: "1px solid #E9E8E6",
+                }}
               >
                 <CalendarDays size={12} />
                 {new Date(completedAt).toLocaleDateString()}
@@ -465,7 +535,11 @@ function Dashboard() {
             {pdfError && (
               <span
                 className="hidden sm:inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium"
-                style={{ backgroundColor: "#FBEEE8", color: "#B5502E", border: "1px solid #F2D9CC" }}
+                style={{
+                  backgroundColor: "#FBEEE8",
+                  color: "#B5502E",
+                  border: "1px solid #F2D9CC",
+                }}
               >
                 <AlertTriangle size={12} />
                 {pdfError}
@@ -474,7 +548,7 @@ function Dashboard() {
             <button
               onClick={handleGeneratePDF}
               disabled={generatingPDF}
-              className="flex items-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-[0.99] disabled:opacity-60"
+              className="flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-[0.99] disabled:opacity-60 w-full sm:w-auto"
               style={{
                 backgroundColor: "#0B0B0B",
                 color: "#FFFFFF",
@@ -494,7 +568,7 @@ function Dashboard() {
         {/* Hero row: score ring + radar chart, spread edge to edge */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-6">
           <div
-            className="lg:col-span-2 rounded-2xl p-6 flex items-center gap-6"
+            className="lg:col-span-2 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-center sm:text-left"
             style={{
               backgroundColor: "#EEF3F2",
               border: "1px solid #DCE9E7",
@@ -502,7 +576,7 @@ function Dashboard() {
             }}
           >
             <ScoreRing score={evaluation.overallScore} />
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col items-center sm:items-start gap-2">
               <p
                 className="text-xs font-medium tracking-widest uppercase"
                 style={{ color: "#2F5D5A" }}
@@ -510,7 +584,10 @@ function Dashboard() {
                 Overall Score
               </p>
               <TierPill score={evaluation.overallScore} />
-              <p className="text-xs leading-relaxed max-w-[220px]" style={{ color: "#20403D" }}>
+              <p
+                className="text-xs leading-relaxed max-w-[280px] sm:max-w-[220px]"
+                style={{ color: "#20403D" }}
+              >
                 {overallTier === "high"
                   ? "A strong, hire-ready performance across the board."
                   : overallTier === "mid"
@@ -586,11 +663,27 @@ function Dashboard() {
               Score Pillars
             </p>
           </div>
-          <div className="flex items-end justify-between gap-3 sm:gap-6 px-2">
-            <ScorePillar icon={<Brain size={13} />} label="Technical" value={evaluation.technicalKnowledge} />
-            <ScorePillar icon={<MessageSquare size={13} />} label="Communication" value={evaluation.communicationSkills} />
-            <ScorePillar icon={<Puzzle size={13} />} label="Problem Solving" value={evaluation.problemSolving} />
-            <ScorePillar icon={<Languages size={13} />} label="Language" value={evaluation.languageProficiency} />
+          <div className="flex items-end sm:justify-between gap-3 sm:gap-6 px-1 sm:px-2 overflow-x-auto sm:overflow-visible pb-1 sm:pb-0">
+            <ScorePillar
+              icon={<Brain size={13} />}
+              label="Technical"
+              value={evaluation.technicalKnowledge}
+            />
+            <ScorePillar
+              icon={<MessageSquare size={13} />}
+              label="Communication"
+              value={evaluation.communicationSkills}
+            />
+            <ScorePillar
+              icon={<Puzzle size={13} />}
+              label="Problem Solving"
+              value={evaluation.problemSolving}
+            />
+            <ScorePillar
+              icon={<Languages size={13} />}
+              label="Language"
+              value={evaluation.languageProficiency}
+            />
           </div>
         </div>
 

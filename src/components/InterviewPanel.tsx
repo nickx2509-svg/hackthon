@@ -636,7 +636,9 @@ function InterviewPanel() {
         backgroundSize: "26px 26px",
       }}
     >
-      <div className="opacity-50">
+      {/* Cursor glow — bumped up a touch from the original so it reads
+          more clearly, everything else about it is untouched */}
+      <div className="opacity-70">
         <CursorGlow />
       </div>
 
@@ -701,7 +703,7 @@ function InterviewPanel() {
 
       {toast && (
         <div
-          className="fixed top-5 right-5 z-[999] flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-medium max-w-xs"
+          className="fixed top-4 right-4 left-4 sm:left-auto sm:top-5 sm:right-5 z-[999] flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-medium sm:max-w-xs"
           style={{
             backgroundColor: "#FBEEE8",
             color: "#B5502E",
@@ -715,7 +717,7 @@ function InterviewPanel() {
       )}
 
       <div
-        className="relative z-[2] flex items-center justify-between px-6 py-4 flex-shrink-0"
+        className="relative z-[2] flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6 sm:py-4 flex-shrink-0"
         style={{
           borderBottom: "1px solid #E9E8E6",
           backgroundColor: "#FFFFFF",
@@ -723,9 +725,9 @@ function InterviewPanel() {
             "0 1px 0 rgba(11,11,11,0.02), 0 6px 16px -12px rgba(11,11,11,0.12)",
         }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{
               backgroundColor: "#EAF3F1",
               border: "1px solid #CFE3E0",
@@ -734,9 +736,9 @@ function InterviewPanel() {
           >
             <Sparkles size={16} style={{ color: "#2F5D5A" }} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p
-              className={`${fraunces.className} text-[15px] font-semibold`}
+              className={`${fraunces.className} text-sm sm:text-[15px] font-semibold truncate max-w-[160px] xs:max-w-[220px] sm:max-w-none`}
               style={{ color: "#0B0B0B" }}
             >
               {setup.role} Interview
@@ -757,7 +759,7 @@ function InterviewPanel() {
                     : ""
                 }
               />
-              {statusLabel}
+              <span className="hidden xs:inline">{statusLabel}</span>
               {(status === "recording" ||
                 status === "speaking" ||
                 status === "thinking") && (
@@ -786,7 +788,7 @@ function InterviewPanel() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
           {!isPreparing && (
             <>
               <span
@@ -816,7 +818,7 @@ function InterviewPanel() {
             </>
           )}
           <span
-            className="text-xs font-semibold tracking-[0.2em] uppercase"
+            className="text-[11px] sm:text-xs font-semibold tracking-[0.15em] sm:tracking-[0.2em] uppercase whitespace-nowrap"
             style={{ color: "#2F5D5A" }}
           >
             MockMate AI
@@ -824,8 +826,8 @@ function InterviewPanel() {
         </div>
       </div>
 
-      <div className="relative z-[2] flex-1 flex min-h-0">
-        <div className="relative flex-1 flex flex-col items-center justify-center px-8 gap-7">
+      <div className="relative z-[2] flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
+        <div className="relative flex-1 flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 gap-5 sm:gap-6 md:gap-7 py-5 md:py-0 min-h-0 overflow-y-auto">
           {isPreparing ? (
             <div className="flex flex-col items-center gap-4">
               <div
@@ -846,7 +848,7 @@ function InterviewPanel() {
                 />
                 <Sparkles size={22} style={{ color: "#2F5D5A" }} />
               </div>
-              <div className="flex flex-col items-center gap-1.5">
+              <div className="flex flex-col items-center gap-1.5 text-center">
                 <p
                   className={`${fraunces.className} text-base font-medium`}
                   style={{ color: "#0B0B0B" }}
@@ -872,14 +874,14 @@ function InterviewPanel() {
                 <Loader2 size={16} className="animate-spin" />
                 Generating your report
               </div>
-              <p className="text-xs" style={{ color: "#9A9A94" }}>
+              <p className="text-xs text-center" style={{ color: "#9A9A94" }}>
                 Scoring {exchangeCount} answers — this takes a few seconds.
               </p>
             </div>
           ) : (
             <>
               <div
-                className="flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold"
+                className="flex items-center gap-2 rounded-full px-3.5 sm:px-4 py-1.5 text-xs font-semibold text-center"
                 style={{
                   backgroundColor: "#EAF0FA",
                   color: "#3B5B92",
@@ -891,15 +893,10 @@ function InterviewPanel() {
                 {languageLabel} · {voiceLabel} voice
               </div>
 
-              <div
-                className="relative flex items-center justify-center"
-                style={{ width: 260, height: 260 }}
-              >
+              <div className="relative flex items-center justify-center flex-shrink-0 w-[190px] h-[190px] xs:w-[210px] xs:h-[210px] sm:w-[230px] sm:h-[230px] md:w-[260px] md:h-[260px]">
                 <svg
                   viewBox="0 0 260 260"
-                  width={260}
-                  height={260}
-                  className="absolute inset-0"
+                  className="absolute inset-0 w-full h-full"
                   style={{
                     animation: "ip-rotate 26s linear infinite",
                     opacity: isSpeaking || isRecording ? 0.9 : 0.45,
@@ -921,8 +918,8 @@ function InterviewPanel() {
                 <div
                   className="rounded-full flex items-center justify-center transition-transform duration-300"
                   style={{
-                    width: 220,
-                    height: 220,
+                    width: "88%",
+                    height: "88%",
                     background:
                       "radial-gradient(circle at 32% 28%, #F3F8F7 0%, #E7EFEE 70%)",
                     border: "1px solid #D3E3E1",
@@ -937,7 +934,7 @@ function InterviewPanel() {
                 >
                   <div
                     className="flex items-end justify-center gap-[8px]"
-                    style={{ height: 68 }}
+                    style={{ height: "31%" }}
                   >
                     {[0, 1, 2, 3, 4].map((i) => (
                       <span
@@ -956,7 +953,7 @@ function InterviewPanel() {
 
               {isThinking ? (
                 <div
-                  className="flex items-center gap-2.5 rounded-2xl px-5 py-3 text-sm font-medium"
+                  className="flex items-center gap-2.5 rounded-2xl px-4 sm:px-5 py-3 text-sm font-medium text-center"
                   style={{
                     backgroundColor: "#FBF3E4",
                     color: "#9C7A2E",
@@ -964,7 +961,7 @@ function InterviewPanel() {
                     boxShadow: "0 10px 26px -16px rgba(156,122,46,0.45)",
                   }}
                 >
-                  <Brain size={16} />
+                  <Brain size={16} className="flex-shrink-0" />
                   Thinking through your answer
                   <span className="flex gap-[3px]">
                     <span
@@ -989,7 +986,7 @@ function InterviewPanel() {
                 </div>
               ) : (
                 <p
-                  className={`${fraunces.className} italic text-lg leading-relaxed max-w-2xl text-center rounded-2xl px-5 py-4`}
+                  className={`${fraunces.className} italic text-base sm:text-lg leading-relaxed max-w-2xl text-center rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4`}
                   style={{
                     backgroundColor: "#EAF0FA",
                     color: "#3B5B92",
@@ -1026,7 +1023,7 @@ function InterviewPanel() {
                     <button
                       onClick={toggleRecording}
                       disabled={micDisabled}
-                      className="relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-50"
+                      className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-50"
                       style={{
                         backgroundColor: isRecording ? "#2F5D5A" : "#FFFFFF",
                         color: isRecording ? "#FFFFFF" : "#4A4640",
@@ -1039,34 +1036,43 @@ function InterviewPanel() {
                         isRecording ? "Stop recording" : "Start recording"
                       }
                     >
-                      {isRecording ? <Mic size={30} /> : <MicOff size={30} />}
+                      {isRecording ? (
+                        <Mic size={26} className="sm:hidden" />
+                      ) : (
+                        <MicOff size={26} className="sm:hidden" />
+                      )}
+                      {isRecording ? (
+                        <Mic size={30} className="hidden sm:block" />
+                      ) : (
+                        <MicOff size={30} className="hidden sm:block" />
+                      )}
                     </button>
                   </div>
 
                   {showAnswerWarning && (
                     <span
-                      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold"
+                      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold text-center"
                       style={{
                         backgroundColor: "#FBEAE7",
                         color: "#B5502E",
                         border: "1px solid #F2C9BC",
                       }}
                     >
-                      <AlarmClock size={12} />
+                      <AlarmClock size={12} className="flex-shrink-0" />
                       {answerSecondsLeft}s to answer or you&apos;ll be sent home
                     </span>
                   )}
 
                   {isSpeaking && !showAnswerWarning && (
                     <span
-                      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium"
+                      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium text-center"
                       style={{
                         backgroundColor: "#F3F3F0",
                         color: "#8A8A84",
                         border: "1px solid #E9E8E6",
                       }}
                     >
-                      <Clock size={11} />
+                      <Clock size={11} className="flex-shrink-0" />
                       Mic unlocks once the interviewer finishes speaking
                     </span>
                   )}
@@ -1090,10 +1096,8 @@ function InterviewPanel() {
           )}
 
           <div
-            className="absolute bottom-6 right-6 rounded-xl flex items-center justify-center transition-all duration-200"
+            className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 md:bottom-6 md:right-6 rounded-xl flex items-center justify-center transition-all duration-200 w-[92px] h-[68px] sm:w-[120px] sm:h-[88px] md:w-[148px] md:h-[108px]"
             style={{
-              width: 148,
-              height: 108,
               background: "linear-gradient(160deg, #4A5B57 0%, #3A4844 100%)",
               border: `2px solid ${isRecording ? "#2F5D5A" : "#0B0B0B18"}`,
               boxShadow: isRecording
@@ -1102,16 +1106,27 @@ function InterviewPanel() {
             }}
           >
             <div
-              className="w-12 h-12 rounded-full flex items-center justify-center"
+              className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center"
               style={{
                 backgroundColor: "rgba(255,255,255,0.08)",
                 border: "1px solid rgba(255,255,255,0.14)",
               }}
             >
-              <User size={24} strokeWidth={1.6} style={{ color: "#EAF3F0" }} />
+              <User
+                size={20}
+                strokeWidth={1.6}
+                style={{ color: "#EAF3F0" }}
+                className="sm:hidden"
+              />
+              <User
+                size={24}
+                strokeWidth={1.6}
+                style={{ color: "#EAF3F0" }}
+                className="hidden sm:block"
+              />
             </div>
             <span
-              className="absolute bottom-1.5 left-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded"
+              className="absolute bottom-1 right-1 sm:bottom-1.5 sm:left-1.5 sm:right-auto text-[9px] sm:text-[10px] font-medium px-1.5 py-0.5 rounded"
               style={{
                 backgroundColor: "rgba(11,11,11,0.35)",
                 color: "#FFFFFF",
@@ -1120,7 +1135,7 @@ function InterviewPanel() {
               You
             </span>
             <span
-              className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
+              className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 w-2 h-2 rounded-full"
               style={{
                 backgroundColor: isRecording ? "#4CAF7D" : "#9A9A94",
                 boxShadow: isRecording ? "0 0 0 3px #4CAF7D33" : "none",
@@ -1130,10 +1145,10 @@ function InterviewPanel() {
         </div>
 
         <div
-          className="w-[360px] flex-shrink-0 flex flex-col min-h-0"
+          className="w-full md:w-[360px] flex-shrink-0 flex flex-col min-h-0 h-[38vh] md:h-auto border-t md:border-t-0 md:border-l"
           style={{
             backgroundColor: "#FFFFFF",
-            borderLeft: "1px solid #E9E8E6",
+            borderColor: "#E9E8E6",
             boxShadow: "-8px 0 24px -20px rgba(11,11,11,0.2)",
           }}
         >
@@ -1185,8 +1200,8 @@ function InterviewPanel() {
 
       <style jsx>{`
         .ip-bar {
-          width: 7px;
-          height: 46px;
+          width: 6px;
+          height: 100%;
           border-radius: 9999px;
           display: inline-block;
           opacity: 0.55;
@@ -1194,6 +1209,11 @@ function InterviewPanel() {
           animation-timing-function: ease-in-out;
           animation-iteration-count: infinite;
           transition: background-color 0.3s ease;
+        }
+        @media (min-width: 640px) {
+          .ip-bar {
+            width: 7px;
+          }
         }
         @keyframes ip-pulse {
           0%,
