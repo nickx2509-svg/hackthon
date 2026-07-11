@@ -8,8 +8,12 @@ import React, { useEffect, useRef } from "react";
  * regardless of scroll position or page length — they were previously
  * invisible past the Macbook section because every section below it painted
  * a solid background on top of them (z-index was lower than the section
- * content). Bumped above section content here, and made higher-contrast so
- * they actually read as stripes instead of disappearing into the page bg.
+ * content). Bumped above section content here.
+ *
+ * Color was plain gray (#C9C7C2) before — swapped for a muted sage tint
+ * pulled from the app's own accent so the stripes read as an intentional
+ * brand detail instead of a leftover placeholder gray, and stay easy on the
+ * eyes in light mode.
  */
 export function ScrollStripes() {
   const leftRef = useRef<HTMLDivElement>(null);
@@ -42,7 +46,7 @@ export function ScrollStripes() {
   }, []);
 
   const stripeStyle = (reverse?: boolean): React.CSSProperties => ({
-    backgroundImage: `repeating-linear-gradient(${reverse ? "-45deg" : "45deg"}, #C9C7C2 0px, #C9C7C2 3px, transparent 3px, transparent 15px)`,
+    backgroundImage: `repeating-linear-gradient(${reverse ? "-45deg" : "45deg"}, #B7CFC9 0px, #B7CFC9 3px, transparent 3px, transparent 15px)`,
     backgroundSize: "64px 64px",
   });
 
@@ -51,12 +55,12 @@ export function ScrollStripes() {
       <div
         ref={leftRef}
         className="pointer-events-none fixed left-0 top-0 hidden h-screen w-[18px] lg:block"
-        style={{ ...stripeStyle(false), opacity: 0.9, zIndex: 40 }}
+        style={{ ...stripeStyle(false), opacity: 0.55, zIndex: 40 }}
       />
       <div
         ref={rightRef}
         className="pointer-events-none fixed right-0 top-0 hidden h-screen w-[18px] lg:block"
-        style={{ ...stripeStyle(true), opacity: 0.9, zIndex: 40 }}
+        style={{ ...stripeStyle(true), opacity: 0.55, zIndex: 40 }}
       />
     </>
   );

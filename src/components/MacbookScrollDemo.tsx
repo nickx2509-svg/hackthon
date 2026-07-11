@@ -44,9 +44,10 @@ export function MainPage() {
       <CursorGlow />
       <ScrollStripes />
 
-      {/* Small breathing room above the navbar so it isn't flush against the
-          very top edge of the viewport */}
-      <div className="pt-3 sm:pt-4">
+      {/* Breathing room above the navbar so it isn't flush against the very
+          top edge of the viewport — bumped up a little more for a calmer,
+          less cramped first impression on both mobile and desktop */}
+      <div className="pt-5 sm:pt-7">
         <Navbar />
       </div>
 

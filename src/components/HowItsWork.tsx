@@ -10,6 +10,7 @@ import {
   BrainCircuit,
   LayoutDashboard,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 
 // Muted-blue keyword highlight, matches the accent used for voice/language
@@ -25,10 +26,29 @@ function Hl({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Small muted pill next to a step heading — a quick tag for what powers
+// that particular step.
+function Tag({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+      style={{
+        backgroundColor: "#EEF3F2",
+        color: "#2F5D5A",
+        border: "1px solid #DCE9E7",
+      }}
+    >
+      <Sparkles size={9} />
+      {children}
+    </span>
+  );
+}
+
 const STEPS = [
   {
     icon: ClipboardEdit,
     title: "Set up your interview",
+    tag: null as string | null,
     body: (
       <>
         Enter your name, target role, experience level, and pick an{" "}
@@ -41,28 +61,32 @@ const STEPS = [
   {
     icon: MessageCircle,
     title: "Meet your AI interviewer",
+    tag: "Gemini voice",
     body: (
       <>
         <Hl>MeshAPI</Hl> greets you by name and asks the first question. It's
-        spoken aloud using your browser's <Hl>text-to-speech</Hl> engine, so it
-        feels like an actual conversation, not a quiz form.
+        spoken aloud using <Hl>Gemini's text-to-speech</Hl>, so it feels like an
+        actual conversation, not a quiz form.
       </>
     ),
   },
   {
     icon: Mic,
-    title: "Answer by voice or text",
+    title: "Answer by voice, mic off by default",
+    tag: "Gemini transcription",
     body: (
       <>
-        Reply using your microphone — <Hl>speech recognition</Hl> converts what
-        you say into text automatically — or just type your answer. Either way,
-        it appears instantly in the conversation panel on the right.
+        Tap the mic to start recording — until you tap it, the interviewer{" "}
+        <Hl>can't hear anything</Hl> you say. Tap again to stop, and{" "}
+        <Hl>Gemini transcribes</Hl> your answer into text automatically. Your
+        reply appears instantly in the conversation panel on the right.
       </>
     ),
   },
   {
     icon: BrainCircuit,
     title: "Adaptive follow-ups",
+    tag: null,
     body: (
       <>
         <Hl>MeshAPI</Hl> reads your last answer and decides the next question
@@ -74,6 +98,7 @@ const STEPS = [
   {
     icon: ShieldCheck,
     title: "Interview wraps up naturally",
+    tag: null,
     body: (
       <>
         Once the AI has enough to evaluate you, it closes the interview with a
@@ -85,12 +110,14 @@ const STEPS = [
   {
     icon: LayoutDashboard,
     title: "Get your evaluation dashboard",
+    tag: "PDF report",
     body: (
       <>
         Your full transcript is sent to <Hl>MeshAPI</Hl> for a professional{" "}
         <Hl>AI evaluation</Hl> — scored metric cards for technical knowledge,
         communication, problem solving, and language proficiency, plus
-        strengths, weaknesses, and a final recommendation.
+        strengths, weaknesses, and a final recommendation. You can also{" "}
+        <Hl>download it as a PDF</Hl> to keep or share.
       </>
     ),
   },
@@ -168,7 +195,7 @@ export function HowItWork() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
                 transition={{ duration: 0.5, ease: "easeOut", delay: i * 0.05 }}
-                className="flex gap-4 rounded-2xl p-5 sm:p-6"
+                className="group flex gap-4 rounded-2xl p-5 sm:p-6 transition-all duration-200 hover:-translate-y-0.5"
                 style={{
                   backgroundColor: "#F9F9F6",
                   border: "1px solid #E9E8E6",
@@ -177,7 +204,7 @@ export function HowItWork() {
                 {/* Step number + icon */}
                 <div className="flex flex-col items-center flex-shrink-0">
                   <div
-                    className="flex h-12 w-12 items-center justify-center rounded-xl"
+                    className="flex h-12 w-12 items-center justify-center rounded-xl transition-shadow duration-200 group-hover:shadow-md"
                     style={{
                       backgroundColor: "#EEF3F2",
                       border: "1px solid #DCE9E7",
@@ -193,8 +220,8 @@ export function HowItWork() {
                   )}
                 </div>
 
-                <div className="pb-1">
-                  <div className="flex items-center gap-2 mb-1.5">
+                <div className="pb-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
                     <span
                       className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold flex-shrink-0"
                       style={{ backgroundColor: "#2F5D5A", color: "#FFFFFF" }}
@@ -207,6 +234,7 @@ export function HowItWork() {
                     >
                       {step.title}
                     </h3>
+                    {step.tag && <Tag>{step.tag}</Tag>}
                   </div>
                   <p
                     className="text-sm leading-relaxed"

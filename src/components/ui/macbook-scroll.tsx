@@ -159,7 +159,7 @@ export const Lid = ({
       >
         <div className="absolute inset-0 rounded-lg bg-[#F9F9F6]" />
         <img
-          src={src as string}
+          src="./image.png"
           alt="MockMate AI interview screen"
           className="absolute inset-0 h-full w-full rounded-lg object-cover object-left-top"
         />

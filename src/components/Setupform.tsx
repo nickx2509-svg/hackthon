@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Sparkles,
@@ -11,7 +11,11 @@ import {
   User,
   Users,
   Play,
-  Volume2,
+  Loader2,
+  Briefcase,
+  BadgeCheck,
+  Info,
+  FileText,
 } from "lucide-react";
 import {
   InterviewSetup,
@@ -79,6 +83,16 @@ function SetupForm() {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
+  const isFormValid = useMemo(
+    () =>
+      Boolean(
+        formData.fullName.trim() &&
+        formData.role.trim() &&
+        formData.experienceLevel,
+      ),
+    [formData.fullName, formData.role, formData.experienceLevel],
+  );
+
   const validate = (): boolean => {
     const next: FormErrors = {};
     if (!formData.fullName.trim()) next.fullName = "Enter your full name";
@@ -92,6 +106,7 @@ function SetupForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isStarting) return;
     if (!validate()) return;
 
     setIsStarting(true);
@@ -99,7 +114,7 @@ function SetupForm() {
 
     setTimeout(() => {
       router.push("/interview");
-    }, 250);
+    }, 550);
   };
 
   const handleAutoFillDescription = async () => {
@@ -129,40 +144,49 @@ function SetupForm() {
       className="scroll-mt-24 w-full flex items-center justify-center px-4 py-20 md:py-28"
       style={{ backgroundColor: "#F9F9F6" }}
     >
-      <div className="w-full max-w-xl">
-        <div className="mb-10 text-center">
+      <div className="w-full max-w-2xl">
+        <div className="mb-11 text-center">
           <span
-            className="inline-block text-xs font-semibold tracking-[0.2em] uppercase mb-3"
-            style={{ color: "#2F5D5A" }}
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-[0.2em] uppercase mb-4"
+            style={{
+              backgroundColor: "#EEF3F2",
+              color: "#2F5D5A",
+              border: "1px solid #DCE9E7",
+            }}
           >
-            MockMate AI
+            <Sparkles size={12} />
+            MockMate AI · Setup
           </span>
           <h1
-            className="text-3xl sm:text-4xl font-semibold tracking-tight mb-3"
+            className="text-4xl sm:text-5xl font-bold tracking-tight mb-4 leading-[1.08]"
             style={{ color: "#0B0B0B" }}
           >
             Set up your mock interview
           </h1>
           <p
-            className="text-sm sm:text-base leading-relaxed"
+            className="text-base sm:text-lg leading-relaxed max-w-lg mx-auto"
             style={{ color: "#6B6B66" }}
           >
-            Tell us a bit about the role you&apos;re preparing for.
-            <br className="hidden sm:block" />
-            Your interviewer will take it from there.
+            A few details, and your interviewer will build the whole session
+            around them — role, level, language, even the voice you hear.
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl p-6 sm:p-8 space-y-6 shadow-[0_1px_2px_rgba(11,11,11,0.04)]"
-          style={{ backgroundColor: "#FFFFFF", border: "1px solid #E9E8E6" }}
+          className="rounded-3xl p-7 sm:p-10 space-y-7"
+          style={{
+            backgroundColor: "#FFFFFF",
+            border: "1px solid #E9E8E6",
+            boxShadow: "0 24px 60px -32px rgba(11,11,11,0.22)",
+          }}
         >
           <div>
             <label
-              className="block text-sm font-medium mb-1.5"
+              className="flex items-center gap-1.5 text-sm font-medium mb-1.5"
               style={{ color: "#0B0B0B" }}
             >
+              <User size={14} style={{ color: "#6B6B66" }} />
               Full Name
             </label>
             <input
@@ -170,7 +194,7 @@ function SetupForm() {
               value={formData.fullName}
               onChange={(e) => handleChange("fullName", e.target.value)}
               placeholder="e.g. Nick Carter"
-              className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none transition-colors focus:ring-2"
+              className="w-full rounded-xl px-4 py-3 text-[15px] outline-none transition-colors focus:ring-2"
               style={{
                 ...inputStyle(errors.fullName),
                 ["--tw-ring-color" as any]: "#2F5D5A33",
@@ -193,42 +217,23 @@ function SetupForm() {
             error={errors.role}
           />
 
-          <div>
-            <label
-              className="block text-sm font-medium mb-1.5"
-              style={{ color: "#0B0B0B" }}
-            >
-              Experience Level
-            </label>
-            <select
-              value={formData.experienceLevel}
-              onChange={(e) => handleChange("experienceLevel", e.target.value)}
-              className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none appearance-none cursor-pointer"
-              style={{
-                ...inputStyle(errors.experienceLevel),
-                color: formData.experienceLevel ? "#0B0B0B" : "#9A9A94",
-              }}
-            >
-              <option value="">Select experience level</option>
-              {EXPERIENCE_LEVELS.map((level) => (
-                <option key={level} value={level}>
-                  {level}
-                </option>
-              ))}
-            </select>
-            {errors.experienceLevel && (
-              <p className="mt-1 text-xs" style={{ color: "#B5502E" }}>
-                {errors.experienceLevel}
-              </p>
-            )}
-          </div>
+          <SearchableCombobox
+            label="Experience Level"
+            value={formData.experienceLevel}
+            onChange={(v) => handleChange("experienceLevel", v)}
+            options={EXPERIENCE_LEVELS}
+            placeholder="Select your experience level"
+            allowCreate={false}
+            error={errors.experienceLevel}
+          />
 
           {/* Interview Language — tab group */}
           <div>
             <label
-              className="block text-sm font-medium mb-1.5"
+              className="flex items-center gap-1.5 text-sm font-medium mb-1.5"
               style={{ color: "#0B0B0B" }}
             >
+              <Globe size={14} style={{ color: "#6B6B66" }} />
               Interview Language
             </label>
             <div
@@ -246,11 +251,14 @@ function SetupForm() {
                     key={lang.id}
                     type="button"
                     onClick={() => handleChange("language", lang.id)}
-                    className="flex flex-col items-center justify-center gap-1 rounded-lg py-3 px-2 text-xs font-medium transition-all duration-150"
+                    className={`flex flex-col items-center justify-center gap-1 rounded-lg py-3.5 px-2 text-xs font-medium border transition-all duration-150 ${
+                      active
+                        ? "border-[#C9D9EE]"
+                        : "border-transparent hover:bg-[#F5F8F7] hover:border-[#DCE9E7]"
+                    }`}
                     style={{
                       backgroundColor: active ? ACCENT_BLUE_BG : "#FFFFFF",
                       color: active ? ACCENT_BLUE : "#6B6B66",
-                      border: `1px solid ${active ? ACCENT_BLUE_BORDER : "transparent"}`,
                     }}
                   >
                     <Icon size={17} strokeWidth={active ? 2.2 : 1.8} />
@@ -263,12 +271,26 @@ function SetupForm() {
 
           {/* Interviewer Voice — tab group with hover-to-preview */}
           <div>
-            <label
-              className="block text-sm font-medium mb-1.5"
-              style={{ color: "#0B0B0B" }}
-            >
-              Interviewer Voice
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label
+                className="flex items-center gap-1.5 text-sm font-medium"
+                style={{ color: "#0B0B0B" }}
+              >
+                <Play size={13} style={{ color: "#6B6B66" }} />
+                Interviewer Voice
+              </label>
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={{
+                  backgroundColor: "#EEF3F2",
+                  color: "#2F5D5A",
+                  border: "1px solid #DCE9E7",
+                }}
+              >
+                <Sparkles size={9} />
+                Gemini voice
+              </span>
+            </div>
             <div
               className="grid grid-cols-3 gap-1.5 p-1.5 rounded-xl"
               style={{
@@ -287,11 +309,14 @@ function SetupForm() {
                     onClick={() => handleChange("voiceGender", voice.id)}
                     onMouseEnter={() => setHoveredVoice(voice.id)}
                     onMouseLeave={() => setHoveredVoice(null)}
-                    className="relative flex flex-col items-center justify-center gap-1 rounded-lg py-3 px-2 text-xs font-medium transition-all duration-150"
+                    className={`relative flex flex-col items-center justify-center gap-1 rounded-lg py-3.5 px-2 text-xs font-medium border transition-all duration-150 ${
+                      active
+                        ? "border-[#C9D9EE]"
+                        : "border-transparent hover:bg-[#F5F8F7] hover:border-[#DCE9E7]"
+                    }`}
                     style={{
                       backgroundColor: active ? ACCENT_BLUE_BG : "#FFFFFF",
                       color: active ? ACCENT_BLUE : "#6B6B66",
-                      border: `1px solid ${active ? ACCENT_BLUE_BORDER : "transparent"}`,
                     }}
                   >
                     <Icon size={17} strokeWidth={active ? 2.2 : 1.8} />
@@ -354,12 +379,30 @@ function SetupForm() {
             </p>
           </div>
 
+          {/* Mic behavior note */}
+          <div
+            className="flex items-start gap-2.5 rounded-xl px-4 py-3"
+            style={{ backgroundColor: "#F3F3F0", border: "1px solid #E9E8E6" }}
+          >
+            <Info
+              size={14}
+              style={{ color: "#8A8A84" }}
+              className="flex-shrink-0 mt-0.5"
+            />
+            <p className="text-xs leading-relaxed" style={{ color: "#6B6B66" }}>
+              Your microphone stays off until you tap it during the interview —
+              nothing is heard until then, and Gemini transcribes your answer
+              automatically once you stop recording.
+            </p>
+          </div>
+
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label
-                className="block text-sm font-medium"
+                className="flex items-center gap-1.5 text-sm font-medium"
                 style={{ color: "#0B0B0B" }}
               >
+                <FileText size={14} style={{ color: "#6B6B66" }} />
                 Job Description{" "}
                 <span className="font-normal" style={{ color: "#9A9A94" }}>
                   (optional)
@@ -388,7 +431,7 @@ function SetupForm() {
               onChange={(e) => handleChange("jobDescription", e.target.value)}
               placeholder="Paste the job description, or click Auto-fill with AI"
               rows={4}
-              className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none resize-none transition-colors focus:ring-2"
+              className="w-full rounded-xl px-4 py-3 text-[15px] outline-none resize-none transition-colors focus:ring-2"
               style={{
                 ...inputStyle(),
                 ["--tw-ring-color" as any]: "#2F5D5A33",
@@ -405,20 +448,67 @@ function SetupForm() {
             )}
           </div>
 
-          <button
-            type="submit"
-            disabled={isStarting}
-            className="w-full rounded-lg py-3 text-sm font-medium transition-all duration-200 disabled:opacity-70 hover:opacity-90 active:scale-[0.99]"
-            style={{ backgroundColor: "#2F5D5A", color: "#FFFFFF" }}
-          >
-            {isStarting ? "Starting interview…" : "Start Interview"}
-          </button>
+          <div>
+            <button
+              type="submit"
+              disabled={!isFormValid || isStarting}
+              className="w-full flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed hover:enabled:opacity-90 active:enabled:scale-[0.99]"
+              style={{
+                backgroundColor: !isFormValid ? "#E9E8E6" : "#2F5D5A",
+                color: !isFormValid ? "#9A9A94" : "#FFFFFF",
+                boxShadow:
+                  isFormValid && !isStarting
+                    ? "0 16px 32px -18px rgba(47,93,90,0.5)"
+                    : "none",
+              }}
+            >
+              {isStarting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Starting interview…
+                </>
+              ) : (
+                "Start Interview"
+              )}
+            </button>
+            {isStarting && (
+              <div
+                className="mt-3 h-1 w-full rounded-full overflow-hidden"
+                style={{ backgroundColor: "#EDEDE9" }}
+              >
+                <div
+                  className="mm-start-bar h-full rounded-full"
+                  style={{ backgroundColor: "#2F5D5A" }}
+                />
+              </div>
+            )}
+            {!isFormValid && !isStarting && (
+              <p
+                className="mt-2 text-xs text-center"
+                style={{ color: "#9A9A94" }}
+              >
+                Fill in your name, role, and experience level to continue.
+              </p>
+            )}
+          </div>
         </form>
 
         <p className="mt-6 text-center text-xs" style={{ color: "#9A9A94" }}>
           Nothing is saved beyond this browser tab — no account, no history.
         </p>
       </div>
+
+      <style jsx>{`
+        .mm-start-bar {
+          width: 0%;
+          animation: mm-start-fill 0.55s ease-out forwards;
+        }
+        @keyframes mm-start-fill {
+          to {
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 }
