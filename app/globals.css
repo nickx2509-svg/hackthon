@@ -101,13 +101,13 @@ body {
 /* ============================= */
 
 ::selection {
-  background: #315F9E;
-  color: #ffffff;
+  background: #EAEFF9;
+  color: #3C5A92;
 }
 
 ::-moz-selection {
-  background: #315F9E;
-  color: #ffffff;
+  background: #EAEFF9;
+  color: #3C5A92;
 }
 
 .dark {

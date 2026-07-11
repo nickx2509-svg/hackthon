@@ -86,3 +86,38 @@ export async function meshTTS(opts: {
 
   return await res.arrayBuffer();
 }
+
+export async function meshTranscribe(
+  audio: Blob,
+  opts: {
+    languageCode?: string;
+    filename?: string;
+  } = {},
+): Promise<string> {
+  const formData = new FormData();
+
+  formData.append("file", audio, opts.filename ?? "audio.webm");
+
+  // ⚠️ Replace this with the exact Mesh transcription model
+  formData.append("model", "YOUR_TRANSCRIPTION_MODEL");
+
+  if (opts.languageCode) {
+    formData.append("language", opts.languageCode);
+  }
+
+  const res = await fetch(`${MESH_BASE_URL}/audio/transcriptions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getKey()}`,
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Mesh transcription failed: ${await res.text()}`);
+  }
+
+  const data = await res.json();
+
+  return data.text ?? "";
+}
