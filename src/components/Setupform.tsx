@@ -16,6 +16,7 @@ import {
   BadgeCheck,
   Info,
   FileText,
+  LucideIcon,
 } from "lucide-react";
 import {
   InterviewSetup,
@@ -43,10 +44,9 @@ const LANGUAGE_ICONS: Record<LanguageOption, React.ElementType> = {
   hinglish: Shuffle,
 };
 
-const VOICE_ICONS: Record<VoiceOption, React.ElementType> = {
+const VOICE_ICONS: Record<VoiceOption, LucideIcon> = {
   male: User,
   female: Users,
-  neutral: Sparkles,
 };
 
 const ACCENT_BLUE = "#3B5B92";
