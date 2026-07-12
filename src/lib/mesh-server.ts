@@ -1,8 +1,3 @@
-// lib/mesh-server.ts
-// SERVER ONLY. Import this only from app/api/**/route.ts files.
-// It reads process.env.MESH_API_KEY, which must never reach the browser.
-// Add MESH_API_KEY=rsk_... to your .env.local
-
 const MESH_BASE_URL = "https://api.meshapi.ai/v1";
 
 function getKey(): string {
@@ -20,10 +15,6 @@ function getKey(): string {
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
-/**
- * Calls Mesh's OpenAI-compatible chat completions endpoint.
- * Docs: https://developers.meshapi.ai/docs/guides/quickstart
- */
 export async function meshChat(
   messages: ChatMessage[],
   model: string = "anthropic/claude-sonnet-4.6",
@@ -48,11 +39,6 @@ export async function meshChat(
   return text as string;
 }
 
-/**
- * Calls Mesh's Text-to-Speech endpoint (proxies Sarvam Bulbul for
- * Indian-language voices). Returns raw audio bytes (mp3 by default).
- * Docs: https://developers.meshapi.ai/docs/guides/text-to-speech
- */
 export async function meshTTS(opts: {
   text: string;
   languageCode: string;
@@ -91,13 +77,6 @@ export async function meshTTS(opts: {
   return await res.arrayBuffer();
 }
 
-/**
- * Transcribes a recorded answer to text using ElevenLabs Scribe v2 via
- * Mesh. Scribe v2 supports 90+ languages via ISO 639-3 codes (see
- * SCRIBE_LANGUAGE_CODE in lib/meshAPI.ts) — leave languageCode undefined
- * to let it auto-detect, which is what we do for "hinglish" since Scribe
- * has no dedicated code-mixed option.
- */
 export async function meshTranscribe(
   audio: Blob,
   opts: {

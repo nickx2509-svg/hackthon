@@ -1,10 +1,3 @@
-// hook/useInterviewAPi.ts
-// Matches the exact import path used across your components:
-//   import { useInterviewAPI } from "../hook/useInterviewAPi";
-//
-// Used by SetupForm.tsx  -> jobDescription()
-// Used by InterviewPanel -> start() / next() / evaluate() / transcribe()
-
 "use client";
 
 import { useState, useCallback } from "react";
@@ -18,7 +11,6 @@ export function useInterviewAPI() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ---- Setup form: "Auto-fill with AI" button ----
   const jobDescription = useCallback(
     async (role: string, experienceLevel: string): Promise<string | null> => {
       setLoading(true);
@@ -43,7 +35,6 @@ export function useInterviewAPI() {
     [],
   );
 
-  // ---- Interview page: opening greeting + first question ----
   const start = useCallback(
     async (setup: InterviewSetup): Promise<string | null> => {
       setError(null);
@@ -67,7 +58,6 @@ export function useInterviewAPI() {
     [],
   );
 
-  // ---- Interview page: react to candidate's answer + ask next question ----
   const next = useCallback(
     async (
       setup: InterviewSetup,
@@ -94,7 +84,6 @@ export function useInterviewAPI() {
     [],
   );
 
-  // ---- Interview page: final scoring after the interview ends ----
   const evaluate = useCallback(
     async (
       setup: InterviewSetup,
@@ -122,7 +111,6 @@ export function useInterviewAPI() {
     [],
   );
 
-  // ---- Interview page: send recorded answer audio, get back text ----
   const transcribe = useCallback(
     async (audio: Blob, setup: InterviewSetup): Promise<string | null> => {
       setError(null);
@@ -133,7 +121,7 @@ export function useInterviewAPI() {
 
         const res = await fetch("/api/interview/transcribe", {
           method: "POST",
-          body: form, // no Content-Type header — browser sets multipart boundary
+          body: form,
         });
         const data = await res.json();
         if (!res.ok)

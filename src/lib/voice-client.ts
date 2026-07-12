@@ -1,7 +1,3 @@
-// lib/voice-client.ts
-// Client-side helper that calls our own /api/voice route, which proxies
-// Mesh's Sarvam Bulbul text-to-speech. Returns a playable audio Blob.
-
 export type VoiceLanguage = "english" | "hindi" | "hinglish";
 export type VoiceGender = "male" | "female";
 

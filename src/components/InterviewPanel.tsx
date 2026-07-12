@@ -49,8 +49,6 @@ const POST_CLOSING_PAUSE_MS = 5000;
 const ANSWER_TIME_LIMIT_SECONDS = 60;
 const ANSWER_WARNING_THRESHOLD_SECONDS = 20;
 
-// Persists the whole in-progress interview so a refresh restores it exactly
-// instead of losing the conversation and restarting from the greeting.
 const SESSION_STATE_KEY = "mockmate_interview_session_state";
 
 interface PersistedSessionState {
@@ -65,10 +63,7 @@ interface PersistedSessionState {
 function saveSession(state: PersistedSessionState) {
   try {
     sessionStorage.setItem(SESSION_STATE_KEY, JSON.stringify(state));
-  } catch {
-    // sessionStorage can fail in private-browsing edge cases — non-fatal,
-    // just means refresh-restore won't work this time.
-  }
+  } catch {}
 }
 
 function loadSession(): PersistedSessionState | null {
@@ -201,9 +196,6 @@ function InterviewPanel() {
     null,
   );
 
-  // Marks that we've finished the mount-time restore-or-start decision, so
-  // the persistence-writer effect doesn't fire (and overwrite a good saved
-  // session with blank initial state) before restore has even run.
   const hydratedRef = useRef(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -249,8 +241,6 @@ function InterviewPanel() {
     setSetup(JSON.parse(raw));
   }, [router]);
 
-  // Mount-time: either restore an in-progress session (refresh recovery)
-  // or start a genuinely new interview — never both.
   useEffect(() => {
     if (!setup) return;
     let cancelled = false;
@@ -260,8 +250,6 @@ function InterviewPanel() {
       saved && JSON.stringify(saved.setupSnapshot) === JSON.stringify(setup);
 
     if (matchesCurrentSetup && saved) {
-      // Already finished and scored before the refresh — nothing left to
-      // show here, the result lives on /dashboard.
       if (sessionStorage.getItem(RESULT_STORAGE_KEY)) {
         router.replace("/");
         return;
@@ -274,19 +262,13 @@ function InterviewPanel() {
       hydratedRef.current = true;
 
       if (saved.isComplete) {
-        // Refresh happened mid-evaluation (or right after) — the report
-        // may never have been saved, so regenerate it rather than leaving
-        // the candidate stuck on a dead screen.
         finishInterview(saved.messages);
       } else {
-        // Mic can't survive a refresh either way, so we always resume
-        // un-recording, but the countdown itself picks up where it left off.
         startAnswerTimer(saved.answerSecondsLeft);
       }
       return;
     }
 
-    // No usable saved session — genuinely new interview.
     clearSession();
     (async () => {
       setIsPreparing(true);
@@ -309,11 +291,8 @@ function InterviewPanel() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup]);
 
-  // Persist the session on every change that matters, so a refresh at any
-  // point restores this exact state.
   useEffect(() => {
     if (!setup || !hydratedRef.current) return;
     saveSession({
@@ -383,8 +362,6 @@ function InterviewPanel() {
     }
   }
 
-  // Now accepts an optional starting value so a restored session resumes
-  // the countdown from exactly where it left off instead of resetting to 60.
   function startAnswerTimer(fromSeconds: number = ANSWER_TIME_LIMIT_SECONDS) {
     clearAnswerTimer();
     setAnswerSecondsLeft(fromSeconds);

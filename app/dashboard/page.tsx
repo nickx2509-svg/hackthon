@@ -37,11 +37,6 @@ import {
   StoredInterviewResult,
 } from "@/src/lib/meshAPI";
 
-// NOTE: this file uses two extra packages —
-//   npm install recharts jspdf
-// jsPDF is loaded dynamically inside handleGeneratePDF so it never
-// touches the server bundle.
-
 type Tier = "high" | "mid" | "low";
 
 function tierOf(scoreOutOf10: number): Tier {

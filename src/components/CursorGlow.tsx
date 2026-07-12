@@ -5,18 +5,9 @@ import React, { useEffect, useRef } from "react";
 const PARTICLE_COUNT = 6;
 const LAG = [0.32, 0.22, 0.16, 0.12, 0.09, 0.07];
 const SIZE = [70, 100, 128, 152, 172, 188];
-// Reduced roughly by half from before — trail is now a faint hint of color
-// rather than a strong wash across the page.
 const BLUR = [20, 27, 34, 41, 48, 55];
 const OPACITY = [0.16, 0.13, 0.1, 0.08, 0.06, 0.04];
 
-/**
- * Rainbow smoke trail that follows the cursor. Each particle is a blurred
- * conic-gradient ring whose hue continuously rotates via a CSS animation, and
- * whose position lerps toward the particle ahead of it, creating a soft
- * multi-colored trail. Pure refs + rAF — no React state, no re-renders.
- * Desktop-only (hidden on touch devices, where there's no cursor to follow).
- */
 export function CursorGlow() {
   const particleRefs = useRef<(HTMLDivElement | null)[]>([]);
   const positions = useRef(

@@ -1,13 +1,3 @@
-// hook/useGemeniTTS.ts
-// Matches the exact import path used in your SetupForm.tsx:
-//   import { useGeminiTTS } from "../hook/useGemeniTTS";
-//
-// NOTE: kept the original filename + export name (useGeminiTTS) purely
-// so your existing form component doesn't need an import change. Under
-// the hood this now calls Mesh API's /api/tts/preview route (Sarvam
-// Bulbul voices), not Gemini — rename it later if you want, just update
-// the import in SetupForm.tsx too.
-
 "use client";
 
 import { useState, useRef, useCallback } from "react";

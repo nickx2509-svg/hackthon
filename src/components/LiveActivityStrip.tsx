@@ -12,15 +12,8 @@ const ACTIVITY = [
   { name: "Ishita", role: "UI/UX Designer", score: "9.0" },
 ];
 
-// Doubled so the marquee can loop seamlessly at -50%.
 const LOOP = [...ACTIVITY, ...ACTIVITY];
 
-/**
- * A quiet, product-y closer for the page — an infinitely scrolling strip of
- * recent mock interview completions. Not real data (no DB per spec), just a
- * believable illustrative ticker that gives the page a "live product" feel
- * instead of ending abruptly after the form.
- */
 export function LiveActivityStrip() {
   return (
     <section

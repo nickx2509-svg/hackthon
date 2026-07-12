@@ -76,7 +76,7 @@ const STEPS = [
     tag: "Gemini transcription",
     body: (
       <>
-        Tap the mic to start recording — until you tap it, the interviewer{" "}
+        Tap the mic to start recording - until you tap it, the interviewer{" "}
         <Hl>can't hear anything</Hl> you say. Tap again to stop, and{" "}
         <Hl>Gemini transcribes</Hl> your answer into text automatically. Your
         reply appears instantly in the conversation panel on the right.

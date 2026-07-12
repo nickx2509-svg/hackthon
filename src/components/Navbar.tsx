@@ -9,17 +9,6 @@ const NAV_ITEMS = [
   { id: "how-it-works", label: "How It Works", icon: Sparkles },
 ];
 
-/**
- * Sticky top nav — stays pinned at the top of the viewport at all times
- * (`fixed top-*`), sits above the cursor glow's decorative layers but the
- * glow still passes over/under it visually since the glow is a fixed
- * full-page overlay; no separate import is needed here for that effect to
- * reach the navbar — it's already global.
- *
- * Desktop (md and up): unchanged pill nav, exactly as before.
- * Mobile / tablet (below md): hamburger opens a card-style dropdown with
- * a soft backdrop, active-item highlight, and a smooth open/close animation.
- */
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeId, setActiveId] = useState("home");
