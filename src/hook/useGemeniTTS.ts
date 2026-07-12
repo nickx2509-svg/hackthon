@@ -14,36 +14,22 @@ export function useGeminiTTS() {
   }, []);
 
   const speak = useCallback(
-    async (text: string, language: LanguageOption, gender: VoiceOption) => {
+    (language: LanguageOption, gender: VoiceOption) => {
       if (isSpeaking) return;
+
+      const url = `/voice-previews/${language}-${gender}.mp3`;
+      const audio = new Audio(url);
+      audioRef.current = audio;
       setIsSpeaking(true);
-      try {
-        const res = await fetch("/api/tts/preview", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, language, gender }),
-        });
-        if (!res.ok) throw new Error("Preview audio request failed");
 
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audioRef.current = audio;
+      audio.onended = () => setIsSpeaking(false);
+      audio.onerror = () => setIsSpeaking(false);
 
-        audio.onended = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(url);
-        };
-        audio.onerror = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(url);
-        };
-
-        await audio.play();
-      } catch (err) {
-        console.error("Voice preview error:", err);
+      // called synchronously inside the click handler — gesture is still valid
+      audio.play().catch((err) => {
+        console.error("Preview playback blocked:", err);
         setIsSpeaking(false);
-      }
+      });
     },
     [isSpeaking],
   );

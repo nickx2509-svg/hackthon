@@ -75,9 +75,8 @@ export const SARVAM_LANGUAGE_CODE: Record<LanguageOption, string> = {
 
 export const SARVAM_SPEAKER: Record<VoiceOption, string> = {
   male: "shubh",
-  female: "priya",
+  female: "roopa",
 };
-
 export const SCRIBE_LANGUAGE_CODE: Partial<Record<LanguageOption, string>> = {
   english: "eng",
   hindi: "hin",

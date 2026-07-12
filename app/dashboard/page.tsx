@@ -297,138 +297,44 @@ function Dashboard() {
     return result.transcript.filter((m) => m.role === "ai").length;
   }, [result]);
 
-  async function handleGeneratePDF() {
+ async function handleGeneratePDF() {
     if (!result) return;
     setPdfError(null);
     setGeneratingPDF(true);
     try {
       const { jsPDF } = await import("jspdf");
-      const { setup, evaluation, transcript, completedAt } = result;
+      const html2canvas = (await import("html2canvas")).default;
+      const { setup } = result;
 
+      const element = document.getElementById("report-capture-area");
+      if (!element) throw new Error("Report area not found.");
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        backgroundColor: "#F9F9F6",
+        useCORS: true,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
       const doc = new jsPDF({ unit: "pt", format: "a4" });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 48;
-      let y = 0;
 
-      function ensureSpace(extra: number) {
-        if (y + extra > pageHeight - 48) {
-          doc.addPage();
-          y = 56;
-        }
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      doc.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        doc.addPage();
+        doc.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
       }
-
-      function heading(text: string, size = 14) {
-        ensureSpace(size + 14);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(size);
-        doc.setTextColor(11, 11, 11);
-        doc.text(text, margin, y);
-        y += size + 10;
-      }
-
-      function paragraph(
-        text: string,
-        size = 10,
-        rgb: [number, number, number] = [74, 70, 64],
-      ) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(size);
-        doc.setTextColor(rgb[0], rgb[1], rgb[2]);
-        const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
-        lines.forEach((line: string) => {
-          ensureSpace(size + 6);
-          doc.text(line, margin, y);
-          y += size + 6;
-        });
-      }
-
-      function bulletList(items: string[], rgb: [number, number, number]) {
-        items.forEach((item) => {
-          const lines = doc.splitTextToSize(
-            `•  ${item}`,
-            pageWidth - margin * 2 - 10,
-          );
-          lines.forEach((line: string, idx: number) => {
-            ensureSpace(16);
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-            doc.setTextColor(rgb[0], rgb[1], rgb[2]);
-            doc.text(line, margin + (idx === 0 ? 0 : 14), y);
-            y += 16;
-          });
-        });
-      }
-
-      // Header band
-      doc.setFillColor(238, 243, 242);
-      doc.rect(0, 0, pageWidth, 96, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(18);
-      doc.setTextColor(47, 93, 90);
-      doc.text("MockMate AI — Interview Report", margin, 40);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      doc.setTextColor(32, 64, 61);
-      doc.text(
-        `${setup.fullName} · ${setup.role} · ${setup.experienceLevel}`,
-        margin,
-        62,
-      );
-      doc.setFontSize(9);
-      doc.setTextColor(106, 106, 102);
-      doc.text(
-        `Generated ${new Date(completedAt).toLocaleString()}`,
-        margin,
-        80,
-      );
-      y = 128;
-
-      heading("Overall Score");
-      paragraph(`${evaluation.overallScore.toFixed(1)} / 10`, 20, [11, 11, 11]);
-      y += 4;
-
-      heading("Score Breakdown");
-      paragraph(
-        `Technical Knowledge — ${evaluation.technicalKnowledge.toFixed(1)}/10`,
-      );
-      paragraph(
-        `Communication Skills — ${evaluation.communicationSkills.toFixed(1)}/10`,
-      );
-      paragraph(`Problem Solving — ${evaluation.problemSolving.toFixed(1)}/10`);
-      paragraph(
-        `English Proficiency — ${evaluation.languageProficiency.toFixed(1)}/10`,
-      );
-      y += 6;
-
-      heading("Strengths");
-      bulletList(evaluation.strengths, [47, 93, 90]);
-      y += 6;
-
-      heading("Weaknesses — Why Marks Were Lower");
-      bulletList(evaluation.weaknesses, [181, 80, 46]);
-      y += 6;
-
-      heading("Areas To Improve");
-      bulletList(evaluation.areasToImprove, [11, 11, 11]);
-      y += 6;
-
-      heading("Final Recommendation");
-      paragraph(evaluation.finalRecommendation);
-      y += 10;
-
-      heading("Full Interview Transcript");
-      let qNum = 0;
-      transcript.forEach((m) => {
-        if (m.role === "ai") {
-          qNum += 1;
-          y += 2;
-          paragraph(`Q${qNum}. ${m.text}`, 10, [32, 64, 61]);
-        } else {
-          paragraph(`A.  ${m.text}`, 10, [74, 70, 64]);
-          y += 4;
-        }
-      });
 
       doc.save(`${setup.fullName.replace(/\s+/g, "-")}-interview-report.pdf`);
     } catch (err) {
@@ -439,7 +345,6 @@ function Dashboard() {
       setGeneratingPDF(false);
     }
   }
-
   if (!loaded || !result) return null;
 
   const { setup, evaluation, transcript, completedAt } = result;
@@ -457,8 +362,7 @@ function Dashboard() {
         backgroundSize: "26px 26px",
       }}
     >
-      <div className="w-full max-w-7xl mx-auto">
-        {/* Header */}
+<div className="w-full max-w-7xl mx-auto" id="report-capture-area">        {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-8">
           <div>
             <span

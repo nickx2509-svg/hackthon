@@ -1,6 +1,3 @@
-// app/api/interview/start/route.ts
-// Called once when the interview page loads. Generates the opening
-// greeting + first question, in the selected language.
 
 import { NextResponse } from "next/server";
 import type { InterviewSetup, LanguageOption } from "@/src/lib/meshAPI";
@@ -37,7 +34,7 @@ export async function POST(req: Request) {
         } for the role of ${setup.role} (${setup.experienceLevel || "unspecified"} level). ${languageInstruction(
           setup.language,
         )}
-Greet them by name, mention you'll be conducting their mock interview for this role today, and reassure them briefly that it's a safe space to practice. Then ask your first interview question. Keep the whole thing under 70 words, natural and conversational — like a real interviewer speaking out loud, not a written message. Do not use markdown or lists.`,
+Greet them by name, mention you'll be conducting their mock interview for this role today, and reassure them briefly that it's a safe space to practice. Then ask your first interview question. Keep the whole thing under 35 words, natural and conversational — like a real interviewer speaking out loud, not a written message. Do not use markdown or lists.`,
       },
       { role: "user", content: "Begin the interview." },
     ]);

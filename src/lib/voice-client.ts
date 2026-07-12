@@ -12,22 +12,29 @@ export async function generateSpeech({
   language,
   gender,
 }: GenerateSpeechOptions): Promise<Blob> {
-  const response = await fetch("/api/voice", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      text,
-      language,
-      gender,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 65000);
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || "Failed to generate speech.");
+  try {
+    const response = await fetch("/api/voice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, language, gender }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to generate speech.");
+    }
+
+    return await response.blob();
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      throw new Error("Voice generation timed out. Please try again.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return await response.blob();
 }

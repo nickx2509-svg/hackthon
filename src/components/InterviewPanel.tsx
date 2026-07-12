@@ -58,6 +58,7 @@ interface PersistedSessionState {
   isGeneratingReport: boolean;
   elapsedSeconds: number;
   answerSecondsLeft: number;
+  lastSpokenMessageId: string | null;
 }
 
 function saveSession(state: PersistedSessionState) {
@@ -192,6 +193,9 @@ function InterviewPanel() {
     ANSWER_TIME_LIMIT_SECONDS,
   );
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [lastSpokenMessageId, setLastSpokenMessageId] = useState<string | null>(
+    null,
+  );
   const answerTimerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
@@ -258,11 +262,26 @@ function InterviewPanel() {
       setMessages(saved.messages);
       setIsComplete(saved.isComplete);
       setElapsedSeconds(saved.elapsedSeconds);
+      setLastSpokenMessageId(saved.lastSpokenMessageId ?? null);
       setIsPreparing(false);
       hydratedRef.current = true;
 
       if (saved.isComplete) {
         finishInterview(saved.messages);
+        return;
+      }
+
+      const lastMsg = saved.messages[saved.messages.length - 1];
+      const needsReplay =
+        lastMsg &&
+        lastMsg.role === "ai" &&
+        saved.lastSpokenMessageId !== lastMsg.id;
+
+      if (needsReplay) {
+        speak(lastMsg.text).then(() => {
+          setLastSpokenMessageId(lastMsg.id);
+          startAnswerTimer(saved.answerSecondsLeft);
+        });
       } else {
         startAnswerTimer(saved.answerSecondsLeft);
       }
@@ -277,10 +296,17 @@ function InterviewPanel() {
       setIsPreparing(false);
       hydratedRef.current = true;
 
-      if (greeting) {
-        pushMessage("ai", greeting);
-        speak(greeting).then(() => startAnswerTimer());
-      } else {
+if (greeting) {
+        const greetingId = nextId();
+        setMessages((prev) => [
+          ...prev,
+          { id: greetingId, role: "ai", text: greeting, timestamp: Date.now() },
+        ]);
+        speak(greeting).then(() => {
+          setLastSpokenMessageId(greetingId);
+          startAnswerTimer();
+        });
+      }   else {
         pushMessage(
           "ai",
           "Sorry — I couldn't start the interview right now. Please refresh the page to try again.",
@@ -302,6 +328,7 @@ function InterviewPanel() {
       isGeneratingReport,
       elapsedSeconds,
       answerSecondsLeft,
+      lastSpokenMessageId,
     });
   }, [
     setup,
@@ -310,6 +337,7 @@ function InterviewPanel() {
     isGeneratingReport,
     elapsedSeconds,
     answerSecondsLeft,
+    lastSpokenMessageId,
   ]);
 
   useEffect(() => {

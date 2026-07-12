@@ -20,11 +20,11 @@ export async function POST(req: Request) {
       {
         role: "system",
         content:
-          "You write short, realistic job descriptions for hiring managers. Respond with ONLY the description text, 3-5 sentences, no headers or markdown, in English.",
+          "You write realistic job descriptions for hiring managers. Focus on what the person actually does day to day: their core responsibilities, the kind of work they own, and the skills the role requires. Avoid generic filler like 'great communication skills' or 'fast-paced environment' unless they are genuinely specific to this role. Respond with ONLY the description text, 4-6 sentences, no headers, no bullet points, no markdown, in clear English.",
       },
       {
         role: "user",
-        content: `Write a job description for a ${experienceLevel || "mid-level"} ${role} position.`,
+        content: `Write a job description for a ${experienceLevel || "mid-level"} ${role} position. Describe the actual day-to-day responsibilities and what this person would be expected to work on, so the description can later be used to generate relevant interview questions for this exact role.`,
       },
     ]);
 

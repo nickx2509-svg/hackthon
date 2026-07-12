@@ -353,27 +353,10 @@ function SetupForm() {
                       role="button"
                       tabIndex={0}
                       aria-label={`Preview ${voice.label} voice`}
-                      onClick={async (e) => {
+                      onClick={(e) => {
                         e.stopPropagation();
-
                         if (isSpeaking) return;
-
-                        const previewText = {
-                          english:
-                            "Hello! I'm your MockMate AI interviewer. This is how I'll sound during your interview. Let's begin.",
-
-                          hindi:
-                            "नमस्ते! मैं आपका MockMate AI इंटरव्यूअर हूँ। इंटरव्यू के दौरान मेरी आवाज़ कुछ ऐसी होगी। चलिए शुरू करते हैं।",
-
-                          hinglish:
-                            "Hello! Main aapka MockMate AI interviewer hoon. Interview ke dauran meri voice kuch aisi hogi. Chaliye shuru karte hain.",
-                        };
-
-                        await speak(
-                          previewText[formData.language],
-                          formData.language,
-                          formData.voiceGender,
-                        );
+                        speak(formData.language, voice.id);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {

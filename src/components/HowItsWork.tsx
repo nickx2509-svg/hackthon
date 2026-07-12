@@ -58,6 +58,7 @@ const STEPS = [
       </>
     ),
   },
+
   {
     icon: MessageCircle,
     title: "Meet your AI interviewer",
@@ -65,8 +66,13 @@ const STEPS = [
     body: (
       <>
         <Hl>MeshAPI</Hl> greets you by name and asks the first question. It's
-        spoken aloud using <Hl>Gemini's text-to-speech</Hl>, so it feels like an
-        actual conversation, not a quiz form.
+        spoken aloud using <Hl>Gemini's text-to-speech</Hl>, making the
+        experience feel like a real conversation instead of a traditional quiz.
+        <br />
+        <br />
+        <Hl>Voice generation may take a few seconds</Hl> depending on network
+        conditions and API response time, so please wait briefly before the
+        audio starts playing.
       </>
     ),
   },
@@ -76,10 +82,10 @@ const STEPS = [
     tag: "Gemini transcription",
     body: (
       <>
-        Tap the mic to start recording - until you tap it, the interviewer{" "}
-        <Hl>can't hear anything</Hl> you say. Tap again to stop, and{" "}
-        <Hl>Gemini transcribes</Hl> your answer into text automatically. Your
-        reply appears instantly in the conversation panel on the right.
+        Tap the mic to start recording. Until you tap it, the interviewer{" "}
+        <Hl>can't hear anything</Hl> you say. Tap it again to stop recording,
+        and <Hl>Gemini transcribes</Hl> your response into text automatically.
+        Your answer appears instantly in the conversation panel on the right.
       </>
     ),
   },
